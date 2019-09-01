@@ -1,0 +1,9 @@
+# MIARMA parameters file. #
+# Version 1.0 #
+facmin 5.0
+facmax 10.0
+npi 6
+npz 6
+repmax 2
+pmin 2
+pmax 60

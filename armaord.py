@@ -1,0 +1,187 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Oct 17 14:32:00 2018
+
+Last modified on Oct 17 14:32:00 2018
+@author: Javier Pascual-Granado
+Function to estimate the optimal order (p,q) to fit an ARMA model.
+
+Input:
+    FILETOREAD: file containing the time series.
+
+Output:
+    integers p and q
+
+ function varargout = armaord(S,varargin) estimates the optimal pair
+ order (p,q) for an ARMA model fitting the time series S.
+ These calls are possible:
+   armaord data_file
+   armaord data_file w aka_file
+       read/write akaike coeffient matrix in aka_file
+   armaord(S,'pmin',pmin) use pmin as min value for iterations
+   armaord(S,'pmax',pmax) use pmax as max value for iterations
+   armaord(S,'pmin',pmin,'pmax',pmax,'w',filename)
+
+   Outputs:
+   varargout{1} = Akaike matrix
+   varargout{2} = pmin
+   varargout{3} = pmax
+   varargout{4} = size of the segment evaluated
+
+ Version: 0.1 (based on armaord.m 1.0.2.7)
+ Changes: 
+ 
+"""
+
+import sys
+import os.path
+import numpy as np
+from statsmodels.tsa.arima_model import ARMA
+from tqdm import tqdm
+
+def read(name):
+    
+    #THIS FUNCTION IS JUST TO READ A FILE
+    with open(name) as fid:
+        #Time and flux are read
+        time, flux = np.loadtxt(fid, unpack=True) 
+        
+    return time, flux
+
+
+def oord(filename=None, iw=None, nom=None, p=None, q=None):
+
+# FUNCTION TO CALCULATE THE OPTIMAL ORDER  #############################
+#
+#Inputs: filename = file with the time series
+#Outputs: p = the estimated value of AR order
+#         q = the estimated value of MA order
+########################################################################
+    
+    # Number of iterations for the algorithm
+    nit = 10
+    
+    # Range for orders. q goes from 0 to pmax always
+    pmin = 2
+    pmax = 30
+
+    #Open and read the file
+    with open(filename) as fid:
+        t,S = fid.read().split() #splitlines() is to avoid \n caracters after each line
+    
+    # Preparing input data
+    N = len(S)
+    
+    # Standardization
+    sig = np.std(S)
+    med = np.mean(S)
+    S = (S - med) / sig
+
+    seg = S
+
+    # Akaike matrix
+    u = pmax - pmin + 1
+    v = pmax + 1
+    akamat = np.empty(shape = [u, v])
+
+    # We use modo as a flag to indicate whether to write the results on a file or not
+    modo = false
+
+    # Option to read/write a file of akaike coefficients
+#    iw = sys.argv[2]   
+    if iw:
+#        nom = sys.argv[3]
+    
+        # Open file to recover akaike coefficients
+        if os.path.exists( nom ):
+            akamat0 = loadtxt( nom )
+            akamat0 = akamat0.transpose()
+            [a, b] = akamat0.shape
+
+            # If num. of Akaike coeff. to calculate <= num. of elements on the
+            # file only a substitution and no computation is performed.
+            if np.size(akamat) > np.size(akamat0):
+                akamat[:a,:b] = akamat0
+            
+                modo = true
+                fichw = open(nom, 'w')
+            
+            else:
+                akamat = akamat0[:u, :v]
+            
+                [cp, cq] = np.where( akamat == np.min( akamat ) )
+                q = cq
+                p = cp + pmin
+            
+                return p, q
+
+        else:
+            modo = true
+            fichw = open(nom, 'w')
+    
+    # The optimal (p,q) pair is found. In case of coincidence the lower p is the preference
+    [cp, cq] = np.where( akamat == np.min( akamat ) )
+    q = cq
+    p = cp + pmin
+
+""" Main loop
+ This is the main loop where the Akaike coefficients are calculated for
+ each pair (p,q)
+"""
+
+#h = waitbar(0,sprintf('Step 2 - Order estimation\n     Please wait...'))
+
+    for i in tqdm( range( pmax+1 ) ):
+        
+        akam = akamat[:, i]
+        
+        for j in range(pmin, pmax+1):
+            ii = j - pmin + 1
+    #             jj = 1+i;
+    #             ind = ir + ii;
+    #             aka = akamat(ii,jj);
+            aka = akam(ii)
+    #             aka = akamat(ind);
+            if aka:
+                if modo:
+                    fichw.write('%f ' % aka)
+                continue
+    
+            # Special four-stage LS-IV iterative algorithm
+            try:               
+    #                 model = armax(seg,[j i],opt);
+                model = ARMA( seg, (j, i) )
+                model_fit = model.fit( maxiter=nit, disp=0 )
+    
+            except E:
+                
+                if modo:
+                    fichw.write( 'NaN ' )
+    
+                continue
+                
+            aka = model_fit.aic
+            akam( ii ) = aka
+    #             akamat(ii,jj) = aka;
+            
+            if modo:
+                fichw.write( '%f ' % aka)
+            
+        akamat[:, 1+i] = akam
+        
+        if modo:
+            fichw.write( '\n' )
+
+#close(h)
+
+    if modo:
+        fichw.close()
+    
+    return p, q
+
+
+if __name__ == "__main__":
+    # input file is generated by MIARMA.m
+    p, q = oord( sys.argv[1], sys.argv[2], sys.argv[3] ) 
+    
