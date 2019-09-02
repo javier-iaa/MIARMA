@@ -72,8 +72,10 @@ if ~isempty(iw),
     % Look for aka temp files, get the p interval and load akamat
     d = dir('temp_*_*.aka');
     if ~isempty(d),
-        pmin0 = str2num( d(1).name(6) );
-        pmax0 = str2num( d(1).name(8:10) );
+        lst_cells = regexp( d(end).name, '_', 'split');
+        pmin0 = str2num( lst_cells{2} );
+        cell_pmax = lst_cells{3};
+        pmax0 = str2num( cell_pmax(1:end-4) );
         akamat0 = dlmread( d(1).name );
         akamat0 = akamat0';
         [a, b] = size( akamat0 );
