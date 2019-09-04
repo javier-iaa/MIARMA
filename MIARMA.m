@@ -131,7 +131,7 @@ if ( nargin == 2 && ischar( varargin{2} ) )
     end
 
     % Max. ratio between segment length and number of parameters for
-    % the model. facmax = 10;
+    % the model. facmax = 6;
     pari = strcmp(pardata.textdata,'facmax');
     pari = circshift(pari,-2);
     if ~isempty(pardata.data(pari))
@@ -162,7 +162,7 @@ if ( nargin == 2 && ischar( varargin{2} ) )
         repmax = pardata.data(pari);
     end
     
-    % Maximum lenght of the segment used to calculate ARMA order
+    % Maximum length of the segment used to calculate ARMA order
     pari = strcmp(pardata.textdata,'mseg');
     pari = circshift(pari,-2);
     if ~isempty(pardata.data(pari))
