@@ -14,10 +14,10 @@ function varargout = armaord(S, varargin)
 %   varargout{3} = pmax
 %   varargout{4} = size of the segment evaluated
 
-% Version: 1.0.4
-% Changes: using previously computed Akaike matrix. Bug fixes.
+% Version: 1.0.5
+% Changes: reverted stabilization properties in armax to default. 
 % Author: Javier Pascual-Granado
-% $Date: 09/08/2019$
+% $Date: 12/10/2019$
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
@@ -148,10 +148,10 @@ for i=0:pmax,
 %             seg1 = seg;
             try               
 %                 model = armax(seg,[j i],opt);
-                model = armax(double(single(seg)),[j i],'Focus', ...
-                    'stability','SearchMethod','lm','MaxIter',nit, ...
-                    'LimitError',1);
-
+%                 model = armax(double(single(seg)),[j i],'Focus', ...
+%                     'stability','SearchMethod','lm','MaxIter',nit, ...
+%                     'LimitError',1);
+                model = armax(seg, [j i]);
             catch E
                 % Report the error messages to a file
                 if exist('nomfich','var'),

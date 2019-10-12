@@ -10,19 +10,50 @@ function [interp,go] = armaint(seg1,seg3,ord,N2,rstd)
 % Outputs:      interp - interpolated segment
 %               go - true when the interpolation works and false otherwise
 
-% Version: 1.3.2
+% Version: 1.3.3
 % Changes from the last version:
-% Several bugs fixed.
+% Added algorithm parameters for controlling stability.
 %
 %  Calls: sigma_clip.m
 %  Author(s): Javier Pascual-Granado
-%  $Date: 19/04/2019$
+%  $Date: 12/10/2019$
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 go = true;
 
 % Std factor for sigma clipping
 fac_sig = 3;
+
+%% Algorithm properties
+% Zstability: Specifies the maximum distance of all poles 
+% from the origin to test stability of discrete-time models. 
+% A model is considered stable if all poles are within the 
+% distance Zstability from the origin. Default is 1+sqrt(eps)
+stab = 1+sqrt(eps);
+myalg.Focus = 'Prediction';
+myalg.MaxIter = 20;
+myalg.Tolerance = 0.0100;
+myalg.LimitError = 1;
+myalg.MaxSize = 'Auto';
+% myalg.SearchMethod = 'Auto';
+myalg.SearchMethod = 'lsqnonlin';
+myalg.Criterion = 'det';
+myalg.Weighting = 1;
+myalg.FixedParameter = [];
+myalg.Display = 'Off';
+myalg.N4Weight = 'Auto';
+myalg.N4Horizon = 'Auto';
+myalg.InitialState = 'Backcast';
+myalg.Advanced.Search.GnPinvConst = 10000;
+myalg.Advanced.Search.InitGnaTol = 1.0e-04;
+myalg.Advanced.Search.LmStep = 2;
+myalg.Advanced.Search.StepReduction = 2;
+myalg.Advanced.Search.MaxBisections = 25;
+myalg.Advanced.Search.LmStartValue= 1.0e-03;
+myalg.Advanced.Search.RelImprovement = 0;
+myalg.Advanced.Threshold.Zstability = stab;
+myalg.Advanced.Threshold.Sstability = stab;
+myalg.Advanced.Threshold.AutoInitialState = 1.05;
 
 %% Version control
 % Three different versions are available: old, new and default (nothing is
@@ -73,7 +104,7 @@ if ~isempty(find(isnan(seg3),1))
 
     if strcmp(modo, 'old')
         % Calculate ARMA model and obtain the coeff. for the left segment
-        model1 = armax(seg1n,ord,'Display','Off','LimitError',1);
+        model1 = armax(seg1n,ord,'alg',myalg);
         ts = 1;
         data1 = iddata(seg1n(1:end-1),[],ts);
         yfor = pred(model1,data1,N2+1,'e');
@@ -90,7 +121,7 @@ if ~isempty(find(isnan(seg3),1))
         
     else
        % Calculate ARMA model and obtain the coeff. for the left segment
-        model1 = armax(seg1n, ord, 'Display', 'Off', 'LimitError', 1);
+        model1 = armax(seg1n, ord,'alg',myalg);
         yfor = forecast(model1, seg1n(1:end-1), N2+1);
     end
 
@@ -109,7 +140,7 @@ if ~isempty(find(isnan(seg3),1))
 
         if strcmp(modo,'old')
             % Calculate ARMA model and obtain the coeff. for the left segment
-            model1 = armax(seg1n,ord,'Display','Off','LimitError',1);
+            model1 = armax(seg1n,ord,'alg',myalg);
             data1 = iddata(seg1n(1:end-1),[],ts);
             yfor = pred(model1,data1,N2+1,'e');
             yfor = yfor.y;
@@ -125,7 +156,7 @@ if ~isempty(find(isnan(seg3),1))
             
         else
             % Calculate ARMA model and obtain the coeff. for the left segment
-            model1 = armax(seg1n,ord,'Display','Off','LimitError',1);
+            model1 = armax(seg1n,ord,'alg',myalg);
             yfor = forecast(model1,seg1n(1:end-1),N2+1); 
         end
 
@@ -153,7 +184,7 @@ if ~isempty(find(isnan(seg1),1))
 
     if strcmp(modo, 'old')
         % Calculate ARMA model and obtain the coeff. for the right segment
-        model2 = armax(flipud(seg3n), ord, 'Display', 'Off','LimitError',1);
+        model2 = armax(flipud(seg3n), ord,'alg',myalg);
         ts = 1;
         data2 = iddata(flipud(seg3n(2:end)),[],ts);
         yback = pred(model2,data2,N2+1,'e');
@@ -171,7 +202,7 @@ if ~isempty(find(isnan(seg1),1))
     else
         
         % Calculate ARMA model and obtain the coeffs for the right segment
-        model2 = armax(flipud(seg3n),ord,'Display','Off','LimitError',1);
+        model2 = armax(flipud(seg3n),ord,'alg',myalg);
         yback = forecast(model2,flipud(seg3n(2:end)),N2+1);
     end
 
@@ -191,7 +222,7 @@ if ~isempty(find(isnan(seg1),1))
 
         if strcmp(modo, 'old')
             % Calculate ARMA model and obtain the coeff. for the right segment
-            model2 = armax(flipud(seg3n), ord, 'Display', 'Off','LimitError',1);
+            model2 = armax(flipud(seg3n), ord,'alg',myalg);
             ts = 1;
             data2 = iddata(flipud(seg3n(2:end)),[],ts);
             yback = pred(model2,data2,N2+1,'e');
@@ -208,7 +239,7 @@ if ~isempty(find(isnan(seg1),1))
 
         else
             % Calculate ARMA model and obtain the coeffs for the right segment
-            model2 = armax(flipud(seg3n),ord,'Display','Off','LimitError',1);
+            model2 = armax(flipud(seg3n),ord,'alg',myalg);
             yback = forecast(model2,flipud(seg3n(2:end)),N2+1);
         end
 
@@ -242,7 +273,7 @@ seg3n = (seg3-mean(seg3))./sig_s3;
 % Forward extrapolation
 if strcmp(modo, 'old')
     % Calculate ARMA model and obtain the coeff. for the left segment
-    model1 = armax(seg1n,ord,'Display','Off','LimitError',1);
+    model1 = armax(seg1n,ord,'alg',myalg);
     ts = 1;
     data1 = iddata(seg1n(1:end-1),[],ts);
     yfor = pred(model1,data1,N2+1,'e');
@@ -259,7 +290,7 @@ elseif strcmp(modo, 'new')
 
 else
    % Calculate ARMA model and obtain the coeff. for the left segment
-    model1 = armax(seg1n, ord, 'Display', 'Off', 'LimitError', 1);
+    model1 = armax(seg1n, ord,'alg',myalg);
     yfor = forecast(model1, seg1n(1:end-1), N2+1);
 end
 yfor = ( yfor.*sig_s1 + mean(seg1) );
@@ -267,7 +298,7 @@ yfor = ( yfor.*sig_s1 + mean(seg1) );
 % Backward extrapolation
 if strcmp(modo, 'old')
     % Calculate ARMA model and obtain the coeff. for the right segment
-    model2 = armax(flipud(seg3n), ord, 'Display', 'Off','LimitError',1);
+    model2 = armax(flipud(seg3n), ord,'alg',myalg);
     ts = 1;
     data2 = iddata(flipud(seg3n(2:end)),[],ts);
     yback = pred(model2,data2,N2+1,'e');
@@ -284,7 +315,7 @@ elseif strcmp(modo, 'new')
 
 else
     % Calculate ARMA model and obtain the coeffs for the right segment
-    model2 = armax(flipud(seg3n),ord,'Display','Off','LimitError',1);
+    model2 = armax(flipud(seg3n),ord,'alg',myalg);
     yback = forecast(model2,flipud(seg3n(2:end)),N2+1);
 end
 yback = flipud(yback);
@@ -302,7 +333,7 @@ if sig_yf > fac_sig*sig_s1 && sig_yf > fac_sig*sig_s3
     
     if strcmp(modo, 'old')
         % Calculate ARMA model and obtain the coeff. for the left segment
-        model1 = armax(seg1n,ord,'Display','Off','LimitError',1);
+        model1 = armax(seg1n,ord,'alg',myalg);
         ts = 1;
         data1 = iddata(seg1n(1:end-1),[],ts);
         yfor = pred(model1,data1,N2+1,'e');
@@ -319,7 +350,7 @@ if sig_yf > fac_sig*sig_s1 && sig_yf > fac_sig*sig_s3
         
     else
        % Calculate ARMA model and obtain the coeff. for the left segment
-        model1 = armax(seg1n, ord, 'Display', 'Off', 'LimitError', 1);
+        model1 = armax(seg1n, ord,'alg',myalg);
         yfor = forecast(model1, seg1n(1:end-1), N2+1);
     end   
     yfor = (yfor.*sig_s1+mean(seg1));
@@ -347,7 +378,7 @@ if sig_yb > fac_sig*sig_s3 && sig_yb > fac_sig*sig_s1
     
     if strcmp(modo, 'old')
         % Calculate ARMA model and obtain the coeff. for the right segment
-        model2 = armax(flipud(seg3n), ord, 'Display', 'Off','LimitError',1);
+        model2 = armax(flipud(seg3n), ord,'alg',myalg);
         ts = 1;
         data2 = iddata(flipud(seg3n(2:end)),[],ts);
         yback = pred(model2,data2,N2+1,'e');
@@ -364,7 +395,7 @@ if sig_yb > fac_sig*sig_s3 && sig_yb > fac_sig*sig_s1
 
     else   
         % Calculate ARMA model and obtain the coeffs for the right segment
-        model2 = armax(flipud(seg3n),ord,'Display','Off','LimitError',1);
+        model2 = armax(flipud(seg3n),ord,'alg',myalg);
         yback = forecast(model2,flipud(seg3n(2:end)),N2+1);
     end
     yback = flipud(yback);
