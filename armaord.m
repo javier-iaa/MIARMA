@@ -14,10 +14,10 @@ function varargout = armaord(S, varargin)
 %   varargout{3} = pmax
 %   varargout{4} = size of the segment evaluated
 
-% Version: 1.0.5
-% Changes: reverted stabilization properties in armax to default. 
+% Version: 1.0.6
+% Changes: Using lsqnonlin as search method. 
 % Author: Javier Pascual-Granado
-% $Date: 12/10/2019$
+% $Date: 15/10/2019$
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
@@ -76,7 +76,7 @@ if ~isempty(iw),
         pmin0 = str2num( lst_cells{2} );
         cell_pmax = lst_cells{3};
         pmax0 = str2num( cell_pmax(1:end-4) );
-        akamat0 = dlmread( d(1).name );
+        akamat0 = dlmread( d(end).name );
         akamat0 = akamat0';
         [a, b] = size( akamat0 );
     
@@ -147,11 +147,11 @@ for i=0:pmax,
             % Special four-stage LS-IV iterative algorithm
 %             seg1 = seg;
             try               
-%                 model = armax(seg,[j i],opt);
 %                 model = armax(double(single(seg)),[j i],'Focus', ...
 %                     'stability','SearchMethod','lm','MaxIter',nit, ...
 %                     'LimitError',1);
-                model = armax(seg, [j i]);
+%                 model = armax(seg, [j i]);
+                model = armax(seg, [j i], 'SearchMethod', 'lsqnonlin');
             catch E
                 % Report the error messages to a file
                 if exist('nomfich','var'),
