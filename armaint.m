@@ -3,20 +3,20 @@ function [interp,go] = armaint(seg1,seg3,ord,N2,rstd)
 % data points between the segments seg1 and seg3 using ARMA models.
 % To generate the output segment interp a triangular weight is used for
 % both segments.
-% Inputs:  seg1 - left data segment
+% Inputs:       seg1 - left data segment
 %               seg3 - right data segment
 %               ord - ARMA (p,q) orders
 %               N2 - length of the gap
 % Outputs:      interp - interpolated segment
 %               go - true when the interpolation works and false otherwise
 
-% Version: 1.3.3
+% Version: 1.3.4
 % Changes from the last version:
-% Added algorithm parameters for controlling stability.
+% Estimation of rstd through fitting residuals.
 %
 %  Calls: sigma_clip.m
 %  Author(s): Javier Pascual-Granado
-%  $Date: 12/10/2019$
+%  $Date: 16/10/2019$
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 go = true;
@@ -125,7 +125,11 @@ if ~isempty(find(isnan(seg3),1))
         yfor = forecast(model1, seg1n(1:end-1), N2+1);
     end
 
-    yfor = yfor.*sig_s1 + mean(seg1);
+    % Estimation of residuals
+    e1 = resid(model1, data1);
+    rstd1 = std(e1.OutputData);
+    r1 = rstd1*randn(size(yfor));
+    yfor = ( (yfor + r1).*sig_s1 + mean(seg1) );
 
 % Validation with sigma clipping
 % This code can produce bugs and should be used with care and only when
@@ -160,7 +164,12 @@ if ~isempty(find(isnan(seg3),1))
             yfor = forecast(model1,seg1n(1:end-1),N2+1); 
         end
 
-        yfor = yfor.*sig_s1 + mean(seg1);
+        % Estimation of residuals
+        e1 = resid(model1, data1);
+        rstd1 = std(e1.OutputData);
+        r1 = rstd1*randn(size(yfor));
+        yfor = ( (yfor + r1).*sig_s1 + mean(seg1) );
+
         sig_yf = std(yfor);
 
         if sig_yf > fac_sig*sig_s1
@@ -207,7 +216,12 @@ if ~isempty(find(isnan(seg1),1))
     end
 
     yback = flipud(yback);
-    yback = yback.*sig_s3 + mean(seg3);
+
+    % Estimation of residuals
+    e2 = resid(model2, data2);
+    rstd2 = std(e2.OutputData);
+    r2 = rstd2*randn(size(yback));
+    yback = ( (yback + r2).*sig_s3 + mean(seg3) );
 
 % Validation with sigma clipping
 % This code can produce bugs and should be used with care and only when
@@ -244,7 +258,13 @@ if ~isempty(find(isnan(seg1),1))
         end
 
         yback = flipud(yback);
-        yback = (yback.*sig_s3+mean(seg3));
+        
+        % Estimation of residuals
+        e2 = resid(model2, data2);
+        rstd2 = std(e2.OutputData);
+        r2 = rstd2*randn(size(yback));
+        yback = ( (yback + r2).*sig_s3 + mean(seg3) );
+        
         sig_yb = std(yback);
 
         if sig_yb > fac_sig*sig_s3
@@ -293,7 +313,6 @@ else
     model1 = armax(seg1n, ord,'alg',myalg);
     yfor = forecast(model1, seg1n(1:end-1), N2+1);
 end
-yfor = ( yfor.*sig_s1 + mean(seg1) );
 
 % Backward extrapolation
 if strcmp(modo, 'old')
@@ -318,8 +337,18 @@ else
     model2 = armax(flipud(seg3n),ord,'alg',myalg);
     yback = forecast(model2,flipud(seg3n(2:end)),N2+1);
 end
+
 yback = flipud(yback);
-yback = ( yback.*sig_s3 + mean(seg3) );
+
+% Estimation of residuals
+e1 = resid(model1, data1);
+rstd1 = std(e1.OutputData);
+r1 = rstd1*randn(size(yfor));
+yfor = ( (yfor + r1).*sig_s1 + mean(seg1) );
+e2 = resid(model2, data2);
+rstd2 = std(e2.OutputData);
+r2 = rstd2*randn(size(yback));
+yback = ( (yback + r2).*sig_s3 + mean(seg3) );
 
 % Validation with sigma clipping
 % This code should be used with care when the extrapolations are unstable.
@@ -352,8 +381,13 @@ if sig_yf > fac_sig*sig_s1 && sig_yf > fac_sig*sig_s3
        % Calculate ARMA model and obtain the coeff. for the left segment
         model1 = armax(seg1n, ord,'alg',myalg);
         yfor = forecast(model1, seg1n(1:end-1), N2+1);
-    end   
-    yfor = (yfor.*sig_s1+mean(seg1));
+    end
+    
+    % Estimation of residuals
+    e1 = resid(model1, data1);
+    rstd1 = std(e1.OutputData);
+    r1 = rstd1*randn(size(yfor));
+    yfor = ( (yfor + r1).*sig_s1 + mean(seg1) );
     
     sig_yf = std(yfor);
     
@@ -399,7 +433,12 @@ if sig_yb > fac_sig*sig_s3 && sig_yb > fac_sig*sig_s1
         yback = forecast(model2,flipud(seg3n(2:end)),N2+1);
     end
     yback = flipud(yback);
-    yback = (yback.*sig_s3+mean(seg3));
+    
+    % Estimation of residuals
+    e2 = resid(model2, data2);
+    rstd2 = std(e2.OutputData);
+    r2 = rstd2*randn(size(yback));
+    yback = ( (yback + r2).*sig_s3 + mean(seg3) );
     
     sig_yb = std(yback);
     
@@ -413,6 +452,6 @@ end
 
 % Interpolated data
 interp = (1-w').*yfor(2:end) + w'.*yback(1:end-1);
-interp = interp + rstd*randn(size(interp));
+% interp = interp + rstd*randn(size(interp));
 
 end
