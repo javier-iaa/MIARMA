@@ -48,16 +48,12 @@ function varargout = MIARMA(varargin)
 %
 % Also necessary for subcalls: armaint.m v1.1 and pred.m 1.0.1
 %
-% Version: 1.5.3
+% Version: 1.5.4
 %
-% Changes: - Added rstd parameter for noise estimation.
-%          - Using lincorr 1.0.3
-%          - Added simpl parameter to choose for the simplified armafill
-%          algorithm af_simp.m, which trims the segments to level the
-%          amount of datapoints used in forward and backward models.
+% Changes: - rstd parameter is now estimated from fitting residuals.
 %          - Minor fixes.
 %
-% $Date: 09/08/2019$
+% $Date: 23/10/2019$
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
@@ -214,7 +210,7 @@ else
     npi = 6;
     facmax = 6;
     facmin = 4;
-    rstd = 0.0;
+%     rstd = 0.0;
 
     if isfield( strdata, 'params' )
         
@@ -268,15 +264,16 @@ else
             temp = strdata.params.temp;
         end
         
-        if isfield( strdata.params, 'rstd' )
-            rstd = strdata.params.rstd;
-        end
+%         if isfield( strdata.params, 'rstd' )
+%             rstd = strdata.params.rstd;
+%         end
     end
     
 end
 
 % List of parameters for armafill/af_simp
-params = [facmin facmax npi pmin rstd];
+% params = [facmin facmax npi pmin rstd];
+params = [facmin facmax npi pmin];
 
 % Other optional parameters
 if isfield( strdata, 'igap')
@@ -325,7 +322,8 @@ if isempty(find(cellfun(cellfind('igap'),varargin),1))
     
     % Correction of the status array for small gaps
     if npi > 1
-        [datout,flagin] = lincorr(datin,flagin,igap,npi,rstd);
+%         [datout,flagin] = lincorr(datin,flagin,igap,npi,rstd);
+        [datout, flagin] = lincorr(datin, flagin, igap, npi);
     end
 
     % Number of linearly interpolated datapoints

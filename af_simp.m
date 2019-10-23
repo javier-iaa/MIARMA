@@ -19,7 +19,7 @@ function [datout,flagout] = af_simp(datin,flagin,aka,ind1,params,varargin)
 % Output:   datout - ARMA interpolated data series
 %           flagout - residual status array
 
-% Calls:   armaint.m v1.3.1
+% Calls:   armaint.m v1.3.4
 % Version: 0.1
 % 
 % Author: Javier Pascual-Granado
@@ -38,7 +38,7 @@ facmin = params(1);
 facmax = params(2);
 npi = params(3);
 pmin = params(4);
-rstd = params(5);
+% rstd = params(5);
 
 % Internal parameter S is related to the efficiency. When the length of the
 % gap is > S times the length of any of the segments the algorithm is no 
@@ -295,11 +295,11 @@ end
                 newi2 = len - newi1 + 1;
                 seg2 = seg2(1:newi2);
             end
-            len = length(seg1);
+%             len = length(seg1);
     end
                 
     % Interpolation algorithm
-    [int,go] = armaint(seg1,seg2,ord,np,rstd);
+    [int, go] = armaint(seg1, seg2, ord, np);
     if go,
         interp = int;
     else
