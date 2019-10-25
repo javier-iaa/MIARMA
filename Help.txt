@@ -1,0 +1,45 @@
+### How does MIARMA works? ###
+It interpolates datapoints in a gapped time series using ARMA models to predict the segments of data.
+
+# Input
+The input can be:
+MIARMA(filename)
+- a filename of an ASCII file containing three columns: first one is the time, second one is the data and the last one is the status of each datapoint.
+MIARMA(filename, param)
+- second input param is the parameter filename containing the list of parameters to be set (one for each row) and their corresponding values separated by a single space.
+
+Alternatively, you can pass MIARMA a data structure strdata that you have already loaded:
+MIARMA(strdata)
+The data structure should contain the following fields:
+
+strdata.time
+strdata.data
+strdata.stat
+
+which are obviously time, data and status, and then a parameter struct params with several additional fields:
+
+strdata.params.simpl : Flag to switch between subroutines af_simp.m (True - default) and armafill.m (False). See below for more information regarding these subroutines.
+strdata.params.temp : Flag to decide to save the Akaike matrix at a temp file (False - default).
+strdata.params.facmin : Min. ratio between segment length and number of parameters for the model. facmin must be at least = 3 (default is 4). 
+strdata.params.facmax :  Max. ratio between segment length and number of parameters for the model (default is 6).
+strdata.params.npi : Lower limit in gap length for the ARMA interpolation. Below this limit linear interpolation is used (default is 6).
+strdata.params.npz : Lower limit in data segment length for the ARMA interpolation. It must be at least d*facmin (though it can be higher for more realistic models), that is, pmin*facmin since d = p+q, min(d) = min(p+q) = pmin+0 = pmin. (default is 8).
+strdata.params.repmax : (default is 3).
+strdata.params.pmin : (default is 2).
+strdata.params.pmax : (default is 30).
+strdata.params.mseg : (default is 1000).
+strdata.params.nuc : (default is 1).
+strdata.params.always_int : (default is True).
+
+If, for example, the lower limit npz is not fulfilled the gap will be ... left for the next iteration to be filled?
+
+# Gap indexes are calculated using subroutine indgap.m
+
+# Sometimes data segments are so small that no model can be fitted so we consider these data segments as if they were gaps at first iteration. The limit to decide this is set by parameter npz and the subroutine sing.m performs the correction. The parameter npz must be at least d*facmin though it can be higher to allow that more datapoints are used for fitting obtaining more realistic models. However, extreme caution is recommended when modifying this parameter since it could result in:
+i) a much higher computation time and more importantly,
+ii) due to the requirements of facmin and the limitations with segments at/or near the edges, many gaps might left unfilled.
+
+The quality of the interpolation depends (among other things) on the number of datapoints that segments bracketing the gap contain
+
+# Example working with default
+With default parameters the simplest model that is fitted is (2,0) which has 2 parameters for the AR part and 0 for the MA one, then d=2. Only gaps with at less 6 data points are interpolated using ARMA models and the data segments bracketing the gap should have at least 8 data points each and are truncated to 12 data points at max. Other options are: 3 iterations for the algorithm, 1000 data points are used to determine the optimal order for the models, just 1 core is used for the calculations (i.e. no parallelization), and it always interpolate, even when there is just one data segment bracketing the gap (in that case an extrapolation is used).

@@ -16,9 +16,9 @@ function varargout = MIARMA(varargin)
 %             igap - is the gap indexes array
 %             aka - is the Akaike coefficient matrix
 %             temp - boolean, 1 to save temp files 0 otherwise
-%             params - a struct that contain constant parameters simpl, 
-%               facmin, facmax, npi, npz, repmax, pmin, pmax, mseg, nuc, 
-%               always_int = 'y'. Consult the documentation for a detailed
+%             params - a struct that contain constant parameters simpl,
+%             temp, facmin, facmax, npi, npz, repmax, pmin, pmax, mseg, nuc, 
+%               always_int = true. Consult the documentation for a detailed
 %               description of each of these parameters.
 %
 % Outputs:  If no output variable is given an ASCII file is created 
@@ -48,18 +48,17 @@ function varargout = MIARMA(varargin)
 %
 % Also necessary for subcalls: armaint.m v1.1 and pred.m 1.0.1
 %
-% Version: 1.5.4
+% Version: 1.5.5
 %
-% Changes: - rstd parameter is now estimated from fitting residuals.
-%          - Minor fixes.
+% Changes: - Minor fixes.
 %
-% $Date: 23/10/2019$
+% $Date: 25/10/2019$
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
 
 %% Some definitions
-version = '1.5.3';
+version = '1.5.5';
 
 lgaps0 = NaN;
 Llin = NaN;
@@ -195,18 +194,25 @@ if ( nargin == 2 && ischar( varargin{2} ) )
     if ~isempty(pardata.data(pari))
         always_int = pardata.data(pari);
     end
+
+    % Decides wheter to save the Akaike matrix at a temp file
+    pari = strcmp(pardata.textdata,'temp');
+    pari = circshift(pari,-2);
+    if ~isempty(pardata.data(pari))
+        temp = pardata.data(pari);
+    end
     
 else
     % default values
     simpl = true;
     temp = false;
-    always_int = 'y';
+    always_int = true;
     nuc = 1;
     mseg = 1000;
     pmin = 2;
     pmax = 30;
     repmax = 3;
-    npz = 6;
+    npz = 8;
     npi = 6;
     facmax = 6;
     facmin = 4;
@@ -304,7 +310,7 @@ if isempty(find(cellfun(cellfind('igap'),varargin),1))
     % Gap indexes are calculated
     igap = indgap(flagin);
     
-    if strcmp(always_int,'n')
+    if strcmp(always_int, false)
     % Gaps at the edges of the time series are eliminated
         if flagin(1)~=0
             flagin(1:igap(2)) = 0;
@@ -332,7 +338,7 @@ if isempty(find(cellfun(cellfind('igap'),varargin),1))
     
     % Correction of the status array for small data segments
     if npz > 0
-        flagin = sing(flagin,npz);
+        flagin = sing(flagin, npz);
     end
 
     % Index rebuilding
