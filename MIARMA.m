@@ -338,7 +338,7 @@ if isempty(find(cellfun(cellfind('igap'),varargin),1))
     
     % Correction of the status array for small data segments
     if npz > 0
-        flagin = sing(flagin, npz);
+        flagin = sing(flagin, npz, igap);
     end
 
     % Index rebuilding
@@ -510,7 +510,9 @@ if numgap==1
     if mod(j,2)==0
         datout = datout(end:-1:1);
     end
+    
     datout(flagin==-1) = datin(flagin==-1);
+
 %     datout(flagout~=0) = [];
 %     timeout(flagout~=0) = [];
 else
@@ -521,8 +523,17 @@ else
             else
                 [datout, flagout] = armafill( datout, flagout, aka, igap, params, j );
             end
-
+            
             igap = indgap(flagout,j+1);
+            
+            if isempty(igap)
+                break;
+            end
+            
+            flagout = sing(flagout, npz, igap);
+
+            igap = indgap(flagout,1);
+            
             l1 = length(igap);
 
             j = j + 1;
@@ -546,7 +557,7 @@ else
             datout = datout(end:-1:1);
             flagout = flagout(end:-1:1);
             igap = L-igap+1;
-            igap=igap(end:-1:1);
+            igap = igap(end:-1:1);
         end
 
         numgap = floor(l1/2);

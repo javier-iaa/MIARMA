@@ -31,26 +31,37 @@ h = waitbar(0,'Step 2- Small segments correction...');
 lseg = igap(1) - 1;
 lgap = igap(2) - igap(1) + 1;
 if (lseg <= npz || lseg <= gaplenfac*lgap),
-    flag1(1:lseg) = -1;
+    flag1(1:lseg) = 0.5;   
+    % 0.5 means that the gap on the right cannot be filled
 end
+
+i = igap(2) + 1; % start of the segment
 
 for k = 3:2:lg,
     waitbar(i/L,h);
     
     % Next data segment
-    i = igap(k-1) + 1; % start of the segment
     lseg = igap(k) - i;
+    if (lseg <= npz || lseg <= gaplenfac*lgap),
+        flag1(i:(igap(k)-1)) = -0.5;
+        % 0.5 means that the gap on the left cannot be filled
+    end
     lgap = igap(k+1) - igap(k) + 1;
     if (lseg <= npz || lseg <= gaplenfac*lgap),
-        flag1(i:(igap(k)-1)) = -1;
+        if flag1(i:(igap(k)-1)) == -0.5
+           flag1(i:(igap(k)-1)) = 1; % if data cannot be used to fill any gap
+        else
+            flag1(i:(igap(k)-1)) = 0.5;
+        end
     end
     
     i = igap(k+1)+1; % start of the next segment
+    
 end
 
 lseg = L - i + 1;
 if (lseg <= npz || lseg <= gaplenfac*lgap),
-    flag1(i:end) = -1;
+    flag1(i:end) = -0.5;
 end
 
 close(h);

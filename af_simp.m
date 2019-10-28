@@ -119,6 +119,14 @@ end
                 end
             else
                 subi = (ind1(i-1)+1):(ind1(i)-1);
+                
+                if flagout(subi)==0.5,
+                    ind1(1:2)=[];
+                    l1 = length(ind1);
+                    ind1f = l1-2;
+                    continue;
+                end
+                
                 seg1 = datout( subi );
                 nf = find( flagout( subi ) == 1, 1, 'last');
                 if ~isempty(nf),
@@ -127,9 +135,18 @@ end
             end
 
             if i==(l0-1),       % Last gap
-                seg2 = datout(ind1(i+1)+1:end);
+                seg2 = datout((ind1(i+1)+1):end);
             else
-                seg2 = datout(ind1(i+1)+1:ind1(i+2)-1);
+                subi = (ind1(i+1)+1):(ind1(i+2)-1);
+                
+                if flagout(subi)==-0.5,
+                    ind1(1:2)=[];
+                    l1 = length(ind1);
+                    ind1f = l1-2;
+                    continue;
+                end
+                
+                seg2 = datout(subi);
             end
         end      
     end 
@@ -263,8 +280,8 @@ end
         end
     end
         
-    if isinf(minaka)==1,
-        if i==1,
+    if isinf(minaka)
+        if i==1
 %             i = 3;
             flagout(ind1(1):ind1(2)) = 1;
             ind1(1:2)=[];
