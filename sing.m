@@ -19,7 +19,8 @@ function flag1 = sing(flag, npz, igap)
 %  $Date: 25/10/2019$
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-gaplenfac = 0.5;
+% A factor of 1.0 ensures a duty cycle of 66% for a single interpolation
+gaplenfac = 1.0;
 
 flag1 = flag;
 L = length(flag);

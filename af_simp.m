@@ -85,68 +85,71 @@ end
             if ind1(i+1)==L
                 seg2 = NaN;
             else
-                seg2 = datout(ind1(i+1)+1:end);
+                subi2 = (ind1(i+1)+1):L;
+                seg2 = datout( subi2 );
             end
             
-            subi = 1:ind1(i)-1;
-            seg1 = datout( subi );
-            nf = find( flagout( subi ) == 1, 1, 'last');
+            subi1 = 1:ind1(i)-1;
+            nf = find( flagout( subi1 ) == 1, 1, 'last');
             if ~isempty(nf),
-                seg1( 1:nf ) = [];
-            end 
+                subi1( 1:nf ) = [];
+            end
+            seg1 = datout( subi1 );
         end
     else
         if ind1(i)==1,          % Left edge
-            seg2 = datout(ind1(i+1)+1:ind1(i+2)-1);
+            subi2 = (ind1(i+1)+1):(ind1(i+2)-1);
+            seg2 = datout( subi2 );
             seg1 = NaN;
         elseif ind1(i+1)==L,    % Right edge
             seg2 = NaN;
             
-            subi = (ind1(i-1)+1):(ind1(i)-1);
-            seg1 = datout( subi );
-            nf = find( flagout( subi ) == 1, 1, 'last');
+            subi1 = (ind1(i-1)+1):(ind1(i)-1);
+            nf = find( flagout( subi1 ) == 1, 1, 'last');
             if ~isempty(nf),
-                seg1( 1:nf ) = [];
-            end 
+                subi1( 1:nf ) = [];
+            end
+            seg1 = datout( subi1 );
         else
             
             if i==1,            % First gap
-                subi = 1:ind1(i)-1;
-                seg1 = datout( subi );
-                nf = find( flagout( subi ) == 1, 1, 'last');
+                subi1 = 1:ind1(i)-1;               
+                nf = find( flagout( subi1 ) == 1, 1, 'last');
                 if ~isempty(nf),
-                    seg1( 1:nf ) = [];
+                    subi1( 1:nf ) = [];
                 end
+                seg1 = datout( subi1 );
             else
-                subi = (ind1(i-1)+1):(ind1(i)-1);
+                subi1 = (ind1(i-1)+1):(ind1(i)-1);
                 
-                if flagout(subi)==0.5,
+                if flagout(subi1)==0.5,
                     ind1(1:2)=[];
                     l1 = length(ind1);
                     ind1f = l1-2;
                     continue;
                 end
                 
-                seg1 = datout( subi );
-                nf = find( flagout( subi ) == 1, 1, 'last');
+                nf = find( flagout( subi1 ) == 1, 1, 'last');
                 if ~isempty(nf),
-                    seg1( 1:nf ) = [];
+                    subi1( 1:nf ) = [];
                 end
+                seg1 = datout( subi1 );
             end
 
             if i==(l0-1),       % Last gap
-                seg2 = datout((ind1(i+1)+1):end);
+                subi2 = (ind1(i+1)+1):L;
+                seg2 = datout( subi2 );
             else
-                subi = (ind1(i+1)+1):(ind1(i+2)-1);
+                subi2 = (ind1(i+1)+1):(ind1(i+2)-1);
                 
-                if flagout(subi)==-0.5,
+                if flagout(subi2)==-0.5,
                     ind1(1:2)=[];
                     l1 = length(ind1);
                     ind1f = l1-2;
                     continue;
                 end
                 
-                seg2 = datout(subi);
+                seg2 = datout( subi2 );
             end
         end      
     end 
@@ -161,9 +164,11 @@ end
     difl = lseg1 - lseg2;
 
     if difl > 0
-        seg1 = seg1( (difl+1):end );
+        subi1 = subi1((difl+1):end);
+        seg1 = datout( subi1 );
     elseif difl < 0
-        seg2 = seg2( 1:(lseg2+difl) );
+        subi2 = subi2(1:(lseg2+difl));
+        seg2 = datout( subi2 );
     end
     
     len = length(seg1);
@@ -306,13 +311,14 @@ end
     if (fac > facmax) && (floor(facmax*d)>np/S),
             if isempty(find(isnan(seg1),1)),  
                 newi1 = 1 + floor(fac-facmax)*d;
-                seg1 = seg1(newi1:len);
+                subi1 = subi1(newi1:end);
+                seg1 = datout( subi1 );
             end
             if isempty(find(isnan(seg2),1)),          
                 newi2 = len - newi1 + 1;
-                seg2 = seg2(1:newi2);
+                subi2 = subi2(1:newi2);
+                seg2 = datout( subi2 );
             end
-%             len = length(seg1);
     end
                 
     % Interpolation algorithm

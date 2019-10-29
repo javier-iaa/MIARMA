@@ -38,8 +38,8 @@ myalg.LimitError = 0; % Specifies when to adjust the weight of large errors
 % from quadratic to linear. Default value is 0. Errors larger than LimitError 
 % times the estimated standard deviation have a linear weight in the criteria.
 myalg.MaxSize = 'Auto'; % data is split into segments where each contains fewer than MaxSize elements.
-myalg.SearchMethod = 'Auto';
-% myalg.SearchMethod = 'lsqnonlin'; % options are gn, gna, lm, Auto, lsqnonlin
+% myalg.SearchMethod = 'Auto';
+myalg.SearchMethod = 'lsqnonlin'; % options are gn, gna, lm, Auto, lsqnonlin
 myalg.Criterion = 'Det';    % Det or Trace
 myalg.Weighting = 1;
 myalg.FixedParameter = [];
