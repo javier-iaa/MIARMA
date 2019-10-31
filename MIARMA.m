@@ -42,17 +42,19 @@ function varargout = MIARMA(varargin)
 %           armaord v.1.0.4
 %           indgap v1.0.2
 %           armafill v1.2.1
-%           lincorr v1.0.3
+%           lincorr v1.0.4
 %           sing
 %           af_simp
+%           polintre
 %
 % Also necessary for subcalls: armaint.m v1.1 and pred.m 1.0.1
 %
-% Version: 1.5.5
+% Version: 1.5.6
 %
-% Changes: - Minor fixes.
+% Changes: - interpolation of small gaps improved through new algorithm
+% lincorr.
 %
-% $Date: 25/10/2019$
+% Date: 30/10/2019
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
@@ -332,6 +334,8 @@ if isempty(find(cellfun(cellfind('igap'),varargin),1))
         [datout, flagin] = lincorr(datin, flagin, igap, npi);
     end
 
+    igap = indgap(flagin,1);
+    
     % Number of linearly interpolated datapoints
     lgaps = length(find(flagin~=0));
     Llin = lgaps0 - lgaps;
@@ -527,6 +531,7 @@ else
             igap = indgap(flagout,j+1);
             
             if isempty(igap)
+                l1 = 0;
                 break;
             end
             
