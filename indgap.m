@@ -3,10 +3,10 @@ function ind1 = indgap(flag,varargin)
 % the start and end of each gap based on the flag assigned to the
 % datapoints.
 
-% Changes from the last version: gaps have flag==1
-% Version: 1.0.3
+% Changes from the last version: gaps can be -1 or +1
+% Version: 1.0.4
 % Author(s): Javier Pascual-Granado
-% Date: 27/10/2019
+% Date: 01/10/2019
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -29,7 +29,7 @@ i=1;j=1;
 
 while i <= L,
     % First index inside the gap
-    ind = find(flag(i:end)==1,1);
+    ind = find(abs(flag(i:end))==1,1);
     if ~isempty(ind),
         ind1(j) = i+ind-1;
         i = i+ind-1;
@@ -39,13 +39,13 @@ while i <= L,
     end
     
     % Last index inside the gap
-    ind = find(flag(i:end)~= 1, 1) - 1;
+    ind = find(abs(flag(i:end))~= 1, 1) - 1;
     if ~isempty(ind),
         ind1(j) = i+ind-1;
         i = i+ind;
         j = j+1;
     else
-        if flag(end)==1,
+        if abs(flag(end))==1,
             ind1(j) = L;
         end
         break;

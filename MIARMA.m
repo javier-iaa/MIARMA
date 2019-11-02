@@ -515,7 +515,8 @@ if numgap==1
         datout = datout(end:-1:1);
     end
     
-    datout(flagin==-1) = datin(flagin==-1);
+    % Recover data segments that were taken out with sing
+%     datout(flagin==-1) = datin(flagin==-1);
 
 %     datout(flagout~=0) = [];
 %     timeout(flagout~=0) = [];
@@ -587,13 +588,9 @@ end
 %     datout = datout(end:-1:1);
 % end
 
-% Small segments are recovered
-datout(flagin==-1) = datin(flagin==-1);
-% datout(flagout~=0) = [];
-flagout(flagin==-1) = 0;
-
-flagout(flagout~=0) = 1;
-% timeout(flagout~=0) = [];
+% Recover data segments that were taken out with sing
+% datout(flagin==-1) = datin(flagin==-1);
+flagout(flagin==-1 | flagin==-0.5 | flagin==0.5) = 0;
 
 if (exist('Llin','var'))
     Llin = Llin + length(find(flagout~=0));

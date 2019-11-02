@@ -5,18 +5,26 @@ function flag1 = sing(flag, npz, igap)
 % ARMA models are fitted if the data segments have at least
 % gaplenfac*length_of_gap and more than npz
 %
+% flag1 is can have 3 different values:
+%    0.5   if data segment is too short to interpolate next gap (but might
+%    be used for the previous one)
+%   -0.5   if data segment is too short to interpolate previous gap (but 
+%    might be used for the next one)
+%   -1.0   if data segment is too short to interpolate any gap 
+% In this last case, since the data segment cannot be used it will be
+% considered part of the gap but the original datapoints will be recovered
+% later.
+%
 % Inputs:   flag - status array
 %           npz - limits the size of the segments that can be used.
 %           igap - gap indexes
 % Outputs:   flag1 - new status array
 
 % Changes from the last version:
-%   - Rebuilt from scratch
-%   - New criterion to fix data segments is introduced: gap length. 
-%   - Several minor fixes.
+%  - Flag -1 is used to recover data segments that are corrected.
 %
 %  Author(s): Javier Pascual-Granado
-%  $Date: 25/10/2019$
+%  Date: 01/11/2019
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % A factor of 1.0 ensures a duty cycle of 66% for a single interpolation
@@ -45,12 +53,12 @@ for k = 3:2:lg,
     lseg = igap(k) - i;
     if (lseg <= npz || lseg <= gaplenfac*lgap),
         flag1(i:(igap(k)-1)) = -0.5;
-        % 0.5 means that the gap on the left cannot be filled
+        % -0.5 means that the gap on the left cannot be filled
     end
     lgap = igap(k+1) - igap(k) + 1;
     if (lseg <= npz || lseg <= gaplenfac*lgap),
         if flag1(i:(igap(k)-1)) == -0.5
-           flag1(i:(igap(k)-1)) = 1; % if data cannot be used to fill any gap
+           flag1(i:(igap(k)-1)) = -1; % data cannot be used to fill any gap
         else
             flag1(i:(igap(k)-1)) = 0.5;
         end
