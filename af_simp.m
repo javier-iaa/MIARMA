@@ -13,20 +13,18 @@ function [datout,flagout] = af_simp(datin,flagin,aka,ind1,params,varargin)
 %           params - parameter list, is an array of 3 elements:
 %              facmin - min. ratio between segment length and number of 
 %                parameters for the model
-%              facmax - 
+%              facmax - max. ratio[
 %              npi - inf. limit in gap length for the ARMA interpolation
 %                (below this limit linear interpolation is used)
 %              pmin - inf. limit por the AR order
 % Output:   datout - ARMA interpolated data series
 %           flagout - residual status array
 % Calls:   armaint.m v1.3.4
-% Version: 0.1.3
-% Changes from the last version: algorithm is optimised and code is
-% polished, more specific comments and the data segments taken out with
-% sing are recovered now inside af_simp. A few bug fixes too.
+% Version: 0.1.4
+% Changes from the last version: A few bug fixes.
 % 
 % Author: Javier Pascual-Granado
-% Date: 01/11/2019
+% Date: 17/11/2019
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 L = length(datin);
@@ -278,7 +276,12 @@ end
 
     if ~isempty(reco)
         % Fix the local trends appearing due to insufficient data
-        difs = [diff(seg1((len-9):len))' diff(seg2(1:10))'];
+        nd = 10;
+        if len<nd
+            difs = [diff(seg1)' diff(seg2)'];
+        else
+            difs = [diff(seg1((len-nd+1):len))' diff(seg2(1:nd))'];
+        end
         lim_jump = 3*mean( abs(difs) );
         
         datin = reshape(datin,L,1);

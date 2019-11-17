@@ -15,11 +15,11 @@ function [datout,flagout] = armafill(datin,flagin,aka,ind1,params,varargin)
 % Output:   datout - ARMA interpolated data series
 %           flagout - residual status array
 
-% Calls:   armaint.m v1.3.1
-% Version: 1.1.2
-% Changes: several bugs fixed
+% Calls:   armaint.m v1.3.4
+% Version: 
+% Changes: minor bugs fixed
 %  Author: Javier Pascual-Granado
-%  $Date: 06/04/2019$
+%  $Date: 17/11/2019$
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 L = length(datin);
@@ -34,7 +34,7 @@ facmin = params(1);
 facmax = params(2);
 npi = params(3);
 pmin = params(4);
-rstd = params(5);
+% rstd = params(5);
 
 % Internal parameter S is related to the efficiency. When the length of the
 % gap is > S times the length of any of the segments the algorithm is no 
@@ -272,7 +272,7 @@ while i<=ind1f,
     end 
         
     % Interpolation algorithm
-    [int,go] = armaint(seg1,seg2,ord,np,rstd);
+    [int,go] = armaint(seg1,seg2,ord,np);
     if go,
         interp = int;
     else

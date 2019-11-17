@@ -1,5 +1,5 @@
-function varargout = MIARMA(varargin)
-% function varargout = MIARMA(varargin) 
+function strout = MIARMA(varargin)
+% function strout = MIARMA(varargin) 
 % interpolates datapoints in a gapped time series using ARMA models to
 % predict the segments of data.
 % Inputs:   filename of an ASCII file containing the input data array, the
@@ -17,50 +17,50 @@ function varargout = MIARMA(varargin)
 %             aka - is the Akaike coefficient matrix
 %             temp - boolean, 1 to save temp files 0 otherwise
 %             params - a struct that contain constant parameters simpl,
-%             temp, facmin, facmax, npi, npz, repmax, pmin, pmax, mseg, nuc, 
-%               always_int = true. Consult the documentation for a detailed
-%               description of each of these parameters.
+%              temp, facmin, facmax, npi, npz, repmax, pmin, pmax, mseg, 
+%              nuc, and always_int. 
+%             Consult the documentation for a detailed description of each 
+%             of these parameters.
 %
 % Outputs:  If no output variable is given an ASCII file is created 
 %           containing the output data and the corresponding time and
 %           status
 %
 %           For test purposes any of theses calls are available:
-%           [timeout, datout, flagout] = MIARMA( filename )
-%           [timeout, datout, flagout, aka] = MIARMA( filename )
-%           [timeout, datout, flagout, igap, flux0, stat0] = 
-%              MIARMA( filename )
-%           [timeout, datout, flagout, aka, igap, flux0, stat0] =
-%              MIARMA(filename)
-%           where flux0,stat0 are the fluxes and status after lincorr
-%           algorithm is performed.
+%           strout = MIARMA( filename )
+%           which is the output structure. It might contains timeout,
+%            datout, statout    
+%           and also the following variables:
+%            aka - Akaike coefficient matrix
+%            ord - optimal order (p,q)
+%            igap - gap indexes
+%            params - a complete list of parameters used for computation
 %
-% By Javier Pascual-Granado, 2014
+% By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 
-% Calls:    armaord_par v0.1
-%           armaord v.1.0.4
-%           indgap v1.0.2
-%           armafill v1.2.1
-%           lincorr v1.0.4
-%           sing
-%           af_simp
-%           polintre
+% Dependencies:     armaord_par.m   0.1
+%                   armaord.m       1.0.4
+%                   indgap.m        1.0.2
+%                   armafill.m      1.2.1
+%                   lincorr.m       1.0.4
+%                   sing.m
+%                   af_simp.m       0.1.4
+%                   polintre.m
+%                   armaint.m       1.3.4
+%                   pred.m          1.0.1
 %
-% Also necessary for subcalls: armaint.m v1.1 and pred.m 1.0.1
+% Version: 1.5.7
 %
-% Version: 1.5.6
+% Changes: - strout structure contains all output info
 %
-% Changes: - interpolation of small gaps improved through new algorithm
-% lincorr.
-%
-% Date: 30/10/2019
+% Date: 17/11/2019
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
 
 %% Some definitions
-version = '1.5.5';
+version = '1.5.7';
 
 lgaps0 = NaN;
 Llin = NaN;
@@ -107,9 +107,16 @@ L = length(datin);
 
 %% Parameters
 % Optional parameter input file
-if ( nargin == 2 && ischar( varargin{2} ) )
+if (nargin == 2 && ischar(varargin{2}))
     parname = varargin{2};
     pardata = importdata(parname);
+
+    % Flag to activate (or not) ascii output
+    pari = strcmp(pardata.textdata,'ascii');
+    pari = circshift(pari,-2);
+    if ~isempty(pardata.data(pari))
+        ascii_struct = pardata.data(pari);
+    end
     
     % Flag to decide between af_simp.m and armafill.m
     pari = strcmp(pardata.textdata,'simpl');
@@ -218,7 +225,7 @@ else
     npi = 6;
     facmax = 6;
     facmin = 4;
-%     rstd = 0.0;
+    ascii_struct = false;
 
     if isfield( strdata, 'params' )
         
@@ -272,12 +279,28 @@ else
             temp = strdata.params.temp;
         end
         
-%         if isfield( strdata.params, 'rstd' )
-%             rstd = strdata.params.rstd;
-%         end
+        if isfield(strdata.params, 'ascii_struct')
+            ascii_struct = strdata.params.ascii_struct;
+        end
+        
     end
     
 end
+
+% Save parameters used in the computation for transparency
+strout.params.simpl = simpl;
+strout.params.temp = temp;
+strout.params.always_int = always_int;
+strout.params.nuc = nuc;
+strout.params.mseg = mseg;
+strout.params.pmin = pmin;
+strout.params.pmax = pmax;
+strout.params.repmax = repmax;
+strout.params.npz = npz;
+strout.params.npi= npi;
+strout.params.facmax = facmax;
+strout.params.facmin = facmin;
+strout.params.ascii_struct = ascii_struct;
 
 % List of parameters for armafill/af_simp
 % params = [facmin facmax npi pmin rstd];
@@ -353,10 +376,7 @@ if isempty(find(cellfun(cellfind('igap'),varargin),1))
         timeout = timein;
         flagout = flagin;
 
-        % If 3 or more outputs arguments are given the program assumes that 
-        % it is working in test mode inside Matlab environment, otherwise
-        % an output file is generated with a predefined header
-        if nargout<3
+        if ascii_struct
 %             L = length(datout);
             Llin = length(find(flagout~=0));
             if exist('filename','var')
@@ -386,23 +406,16 @@ if isempty(find(cellfun(cellfind('igap'),varargin),1))
             end
             fclose(fich);
         else
-            varargout{1} = timeout;
-            varargout{2} = datout;
-            varargout{3} = flagout;
-            
-            % Gap indexes can be obtained as fourth output
-            if nargout>3
-                varargout{4} = igap;
-            end
-            
-            % No model is returned as no model has been calculated
-            if nargout>4
-                varargout{5} = [];
-            end
+            strout.timeout = timeout;
+            strout.datout = datout;
+            strout.statout = flagout;
+            strout.igap = igap;
         end
         return;
     end
 end
+
+strout.igap = igap;
 
 %% Search for the optimal order (p,q)
 if isempty(find(cellfun(cellfind('aka'),varargin),1))
@@ -474,21 +487,13 @@ p = cp + pmin - 1;
 fprintf('Optimal order: [%d %d]\n', p, q); 
 
 % Outputs: gap indexes and Akaike coefficient matrix
-if nargout>3
-    if nargout==4
-        varargout{4} = aka;
-    elseif nargout==7
-        varargout{4} = igap;
-        varargout{5} = timeout;
-        varargout{6} = datout;
-        varargout{7} = flagin;
-    else
-        varargout{4} = aka;
-        varargout{5} = igap;
-        varargout{6} = timeout;
-        varargout{7} = datout;
-        varargout{8} = flagin;
-    end
+if ~ascii_struct
+        strout.aka = aka;
+        strout.igap = igap;
+        strout.timeout = timeout;
+        strout.datout = datout;
+        strout.statout = flagin;
+        strout.ord = [p q];
 end
 
 %% ARMA filling iterations
@@ -596,11 +601,11 @@ if (exist('Llin','var'))
     Llin = Llin + length(find(flagout~=0));
 end
 
-if nargout>=3
+if ~ascii_struct
     % This occurs only when MIARMA is called for test purposes only
-    varargout{1} = timeout;
-    varargout{2} = datout;
-    varargout{3} = flagout;
+    strout.timeout = timeout;
+    strout.datout = datout;
+    strout.statout = flagout;
 else
     % This is the situation in a standard call
     if exist('filename','var')
