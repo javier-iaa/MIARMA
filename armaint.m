@@ -10,13 +10,13 @@ function [interp,go] = armaint(seg1,seg3,ord,N2)
 % Outputs:      interp - interpolated segment
 %               go - true when the interpolation works and false otherwise
 
-% Version: 1.3.4
+% Version: 1.3.5
 % Changes from the last version:
-% Estimation of rstd through fitting residuals.
+% Bug fixes.
 %
 %  Calls: sigma_clip.m
 %  Author(s): Javier Pascual-Granado
-%  $Date: 16/10/2019$
+%  Date: 19/11/2019
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 go = true;
@@ -193,7 +193,6 @@ if ~isempty(find(isnan(seg3),1))
 
     % Interpolated data
     interp = yfor(2:end);
-    interp = interp + rstd*randn(size(interp)); 
     return
 end
 %% Backward predictor: ARMA approach using an iterative algorithm
@@ -288,7 +287,6 @@ if ~isempty(find(isnan(seg1),1))
 
     % Interpolated data
     interp = yback(1:end-1);
-    interp = interp + rstd*randn(size(interp));
     return
 end
 

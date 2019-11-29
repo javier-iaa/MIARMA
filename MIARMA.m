@@ -50,17 +50,17 @@ function strout = MIARMA(varargin)
 %                   armaint.m       1.3.4
 %                   pred.m          1.0.1
 %
-% Version: 1.5.7
+% Version: 1.5.8
 %
-% Changes: - strout structure contains all output info
+% Changes: - Minor corrections
 %
-% Date: 17/11/2019
+% Date: 27/11/2019
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
 
 %% Some definitions
-version = '1.5.7';
+version = '1.5.8';
 
 lgaps0 = NaN;
 Llin = NaN;
@@ -358,6 +358,15 @@ if isempty(find(cellfun(cellfind('igap'),varargin),1))
     end
 
     igap = indgap(flagin,1);
+    if isempty(igap)
+        timeout = timein;
+        flagout = flagin;
+        strout.timeout = timeout;
+        strout.datout = datout;
+        strout.statout = flagout;
+        strout.igap = igap;
+        return
+    end
     
     % Number of linearly interpolated datapoints
     lgaps = length(find(flagin~=0));
