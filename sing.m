@@ -21,10 +21,10 @@ function flag1 = sing(flag, npz, igap)
 % Outputs:   flag1 - new status array
 
 % Changes from the last version:
-%  - Flag -1 is used to recover data segments that are corrected.
+%  waitbar substituted by percentages.
 %
 %  Author(s): Javier Pascual-Granado
-%  Date: 01/11/2019
+%  Date: 04/12/2019
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % A factor of 1.0 ensures a duty cycle of 66% for a single interpolation
@@ -34,7 +34,7 @@ flag1 = flag;
 L = length(flag);
 lg = length(igap);
 
-h = waitbar(0,'Step 2- Small segments correction...');
+% h = waitbar(0,'Step 2- Small segments correction...');
 
 % First data segment and gap
 lseg = igap(1) - 1;
@@ -47,7 +47,8 @@ end
 i = igap(2) + 1; % start of the segment
 
 for k = 3:2:lg,
-    waitbar(i/L,h);
+    fprintf('%3.0f %%',i/L);
+%     waitbar(i/L,h);
     
     % Next data segment
     lseg = igap(k) - i;
@@ -66,6 +67,7 @@ for k = 3:2:lg,
     
     i = igap(k+1)+1; % start of the next segment
     
+    fprintf(repmat('\b',1,5));
 end
 
 lseg = L - i + 1;
@@ -73,4 +75,4 @@ if (lseg <= npz || lseg <= gaplenfac*lgap),
     flag1(i:end) = -0.5;
 end
 
-close(h);
+% close(h);

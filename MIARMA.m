@@ -68,8 +68,8 @@ Llin = NaN;
 % Call definition of cellfind function
 cellfind = @(string)(@(cell_contents)(strcmp(string,cell_contents)));
 
-disp('Caution: All gaps must be correctly flagged for the gap-filling')
-disp ('algorithm to give an adequate output');
+fprintf('Warning: All gaps must be correctly flagged for the gap-filling\n')
+fprintf('algorithm to give an adequate output\n\n');
 
 %% Input data
 if ischar( varargin{1} )
@@ -333,6 +333,7 @@ if isempty(find(cellfun(cellfind('igap'),varargin),1))
     end
         
     % Gap indexes are calculated
+    fprintf('Step 1 - Finding gap indexes\n');
     igap = indgap(flagin);
     
     if strcmp(always_int, false)
@@ -353,6 +354,7 @@ if isempty(find(cellfun(cellfind('igap'),varargin),1))
     
     % Correction of the status array for small gaps
     if npi > 1
+        fprintf('Step 1b - Correction of status array for small gaps\n');
 %         [datout,flagin] = lincorr(datin,flagin,igap,npi,rstd);
         [datout, flagin] = lincorr(datin, flagin, igap, npi);
     end
@@ -374,10 +376,12 @@ if isempty(find(cellfun(cellfind('igap'),varargin),1))
     
     % Correction of the status array for small data segments
     if npz > 0
+        fprintf('Step 2 - Small segments correction...\n');
         flagin = sing(flagin, npz, igap);
     end
 
     % Index rebuilding
+    fprintf('Step 3 - Index rebuilding...\n');
     igap = indgap(flagin,1);
       
     % If no gaps are found the program returns with no further calculations
@@ -449,6 +453,8 @@ if isempty(find(cellfun(cellfind('aka'),varargin),1))
         seg = seg(1:mseg);
     end
     
+    fprintf('Step 4 - Order estimation\n    Please wait...\n');
+    
     % Optimal order (p,q) for the ARMA model of seg
     if nuc == 1
         if exist( 'filename', 'var' )
@@ -493,7 +499,7 @@ end
 [cp, cq] = find( aka == min( min( aka ) ) );
 q = cq - 1;
 p = cp + pmin - 1;
-fprintf('Optimal order: [%d %d]\n', p, q); 
+fprintf('\nOptimal order: [%d %d]\n\n', p, q); 
 
 % Outputs: gap indexes and Akaike coefficient matrix
 if ~ascii_struct
@@ -643,5 +649,7 @@ else
             timeout(i),datout(i),flagout(i));
     end
     fclose(fich);
+    
+    fprintf('\n  Interpolation finished successfully.  \n');
 end
 % END

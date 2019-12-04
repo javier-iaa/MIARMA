@@ -14,10 +14,10 @@ function varargout = armaord(S, varargin)
 %   varargout{3} = pmax
 %   varargout{4} = size of the segment evaluated
 
-% Version: 1.0.6
-% Changes: Using lsqnonlin as search method. 
+% Version: 1.0.7
+% Changes: waitbars substituted by percentages.
 % Author: Javier Pascual-Granado
-% $Date: 15/10/2019$
+% $Date: 04/12/2019$
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
@@ -116,12 +116,13 @@ end
 % This is the main loop where the Akaike coefficients are calculated for
 % each pair (p,q)
 
-h = waitbar(0,sprintf(...
-'Step 2 - Order estimation\n     Please wait...'));
+% h = waitbar(0,sprintf(...
+% 'Step 2 - Order estimation\n     Please wait...'));
 
 for i=0:pmax,
     
-    waitbar((i+1)/(1+pmax),h)
+%     waitbar((i+1)/(1+pmax),h)
+    fprintf('%3.0f %%', 100*(i+1)/(1+pmax));
     
     akam = akamat(:,1+i);
     
@@ -138,7 +139,8 @@ for i=0:pmax,
             if ~isnan(aka),
                 if modo,
                     fprintf(fichw,'%f ',aka);
-                end 
+                end
+                fprintf(repmat('\b',1,5));
                 continue;
             end
             
@@ -168,6 +170,7 @@ for i=0:pmax,
                 if modo,
                     fprintf(fichw,'NaN ');
                 end
+                fprintf(repmat('\b',1,5));
                 continue;
             end
             
@@ -185,10 +188,11 @@ for i=0:pmax,
         
         if modo,
             fprintf(fichw,'\n');
-        end 
+        end
+        fprintf(repmat('\b',1,5));
 end
 
-close(h);
+% close(h);
 
 if modo,
     fclose(fichw);

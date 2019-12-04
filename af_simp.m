@@ -20,11 +20,11 @@ function [datout,flagout] = af_simp(datin,flagin,aka,ind1,params,varargin)
 % Output:   datout - ARMA interpolated data series
 %           flagout - residual status array
 % Calls:   armaint.m v1.3.4
-% Version: 0.1.4
-% Changes from the last version: A few bug fixes.
+% Version: 0.1.5
+% Changes from the last version: wait bars substituted by percentages.
 % 
 % Author: Javier Pascual-Granado
-% Date: 17/11/2019
+% Date: 04/12/2019
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 L = length(datin);
@@ -68,11 +68,16 @@ ind1f = l0-1;
 i = 1;
 
 if nargin==5,
-    h = waitbar(0,sprintf(...
-        'Gap filling iteration 1\n     Please wait...'));
+    text_iter = 'Gap filling iteration 1\n     Please wait...\n';
+    fprintf(text_iter);
+    fprintf('Start');
+%     h = waitbar(0,sprintf(text_iter));
 else
-    h = waitbar(0,sprintf(...
-        'Gap filling iteration %d\n     Please wait...',varargin{1}));
+    text_iter = sprintf('Gap filling iteration %d\n     Please wait...\n',...
+        varargin{1});
+    fprintf(text_iter);
+    fprintf('Start');
+%     h = waitbar(0,text_iter);
 end
 
 % Here begins the gap-filling process
@@ -165,7 +170,10 @@ end
     % number of lost datapoints in the gap
     np = ind1(i+1)-ind1(i)+1;
     
-    waitbar(ind1(i)/L,h)
+%     waitbar(ind1(i)/L,h)
+    fprintf(repmat('\b',1,5));
+    fprintf('%3.0f %%', 100*ind1(i)/L);
+
 
     lseg1 = length(seg1);
     lseg2 = length(seg2);
@@ -328,6 +336,9 @@ end
     ind1f = l1-2;
     aka = aka1;
     ord = ord1;
+ end
+ 
+fprintf(repmat('\b',1,5));
+fprintf('\n');
+% close(h);
 end
-
-close(h);
