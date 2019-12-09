@@ -50,17 +50,17 @@ function strout = MIARMA(varargin)
 %                   armaint.m       1.3.4
 %                   pred.m          1.0.1
 %
-% Version: 1.5.8
+% Version: 1.5.9
 %
-% Changes: - Minor corrections
+% Changes: - waitbar substituted by percentages
 %
-% Date: 27/11/2019
+% Date: 04/12/2019
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
 
 %% Some definitions
-version = '1.5.8';
+version = '1.5.9';
 
 lgaps0 = NaN;
 Llin = NaN;
