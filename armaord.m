@@ -174,7 +174,7 @@ for i=0:pmax,
                 continue;
             end
             
-            aka = aic(model);
+            aka = aicplus(model,'AICc');
             
             akam(ii) = aka;
 %             akamat(ii,jj) = aka;
