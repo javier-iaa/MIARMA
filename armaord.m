@@ -14,11 +14,14 @@ function varargout = armaord(S, varargin)
 %   varargout{3} = pmax
 %   varargout{4} = size of the segment evaluated
 
-% Version: 1.0.7
-% Changes: waitbars substituted by percentages.
+% Version: 1.0.8
+% Changes: AICc, BIC, HQ, FPE in addition to AIC
 % Author: Javier Pascual-Granado
-% $Date: 04/12/2019$
+% $Date: 11/12/2019$
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Information Criterion
+IC = 'AICc';
 
 warning off all
 
@@ -26,7 +29,29 @@ warning off all
 N = length(S);
 
 % Number of iterations for the algorithm
-nit = 10; 
+% nit = 10; 
+
+switch IC
+
+    case 'AIC'
+        ext = '.aka';
+        
+    case 'AICc'
+        ext = '.akc';
+        
+    case 'BIC'
+        ext = '.bic';
+        
+    case 'FPE'
+        ext = '.fpe';
+        
+    case 'HQ'
+        ext = '.hq';
+        
+    otherwise
+        error('Selection criterion is not defined properly')
+end
+    
 
 % nin = max(nargin,1)-1;
 % nout = max(nargout,1) - 2;
@@ -67,10 +92,10 @@ modo = false;
 iw = find( strcmp(varargin,'w'), 1 );
 if ~isempty(iw),
     nom = varargin{iw+1};
-    nomfich = strcat( nom, '.aka' );
+    nomfich = strcat( nom, ext );
     
     % Look for aka temp files, get the p interval and load akamat
-    d = dir('temp_*_*.aka');
+    d = dir(['temp_*_*' ext]);
     if ~isempty(d),
         lst_cells = regexp( d(end).name, '_', 'split');
         pmin0 = str2num( lst_cells{2} );
@@ -88,14 +113,14 @@ if ~isempty(iw),
             if (pmin >= pmin0) && (pmin <= pmax0),  % pmax > pmax0
                 % Ojo, pmin > pmax0 not considered yet
                 nomfich = ['temp_' num2str(pmin0) '_' num2str(pmax) ...
-                    '.aka'];
+                    ext];
                 r = pmax - pmin0 + 1;
                 akamat = NaN( r, pmax+1 );
                 akamat(1:a,1:b) = akamat0;
                 
             elseif (pmin <= pmin0) && (pmax < pmax0),
                 nomfich = ['temp_' num2str(pmin) '_' num2str(pmax0) ...
-                    '.aka'];
+                    ext];
                 r = pmax0 - pmin + 1;
                 akamat = NaN( r, pmax0+1 );
                 
@@ -174,7 +199,7 @@ for i=0:pmax,
                 continue;
             end
             
-            aka = aicplus(model,'AICc');
+            aka = aicplus(model,IC);
             
             akam(ii) = aka;
 %             akamat(ii,jj) = aka;
