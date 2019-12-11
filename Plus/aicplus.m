@@ -39,18 +39,18 @@ switch criterion
     
     % AIC with correction for small samples
     case 'AICc'
-        ic = log(V) + Nnpar + (2*k^2 + 2*k)/(N - k - 1);
+        ic = log(V) + Nnpar + (1/N)*2*k*(k+1)/(N-k-1);
     
     % Bayesian Information Criterion (also known as the Schwarz-Bayesfunction ic = aicplus(model, criterion)
     % Criterion)
-    case 'BIC'
+    case 'BIC' -> to be revised
         ic = log(V) + Nnpar*log(N)/2;
 
     % Akaike Final Prediction Error
     case 'FPE'    
         ic = FPE;
         
-    % Hannan-Quinn Criterion
+    % Hannan-Quinn Criterion -> to be revised
     case 'HQ' 
         ic = log(V) + Nnpar*log(log(N));
         

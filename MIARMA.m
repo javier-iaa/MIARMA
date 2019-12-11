@@ -453,7 +453,7 @@ if isempty(find(cellfun(cellfind('aka'),varargin),1))
         seg = seg(1:mseg);
     end
     
-    fprintf('Step 4 - Order estimation\n    Please wait...\n');
+    fprintf('Step 4 - Order estimation\nPlease wait...\n');
     
     % Optimal order (p,q) for the ARMA model of seg
     if nuc == 1

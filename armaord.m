@@ -122,7 +122,7 @@ end
 for i=0:pmax,
     
 %     waitbar((i+1)/(1+pmax),h)
-    fprintf('%3.0f %%', 100*(i+1)/(1+pmax));
+    fprintf('%.f%%... ', 100*(i+1)/(1+pmax));
     
     akam = akamat(:,1+i);
     
@@ -140,7 +140,7 @@ for i=0:pmax,
                 if modo,
                     fprintf(fichw,'%f ',aka);
                 end
-                fprintf(repmat('\b',1,5));
+%                 fprintf(repmat('\b',1,5));
                 continue;
             end
             
@@ -170,7 +170,7 @@ for i=0:pmax,
                 if modo,
                     fprintf(fichw,'NaN ');
                 end
-                fprintf(repmat('\b',1,5));
+%                 fprintf(repmat('\b',1,5));
                 continue;
             end
             
@@ -189,7 +189,7 @@ for i=0:pmax,
         if modo,
             fprintf(fichw,'\n');
         end
-        fprintf(repmat('\b',1,5));
+%         fprintf(repmat('\b',1,5));
 end
 
 % close(h);
