@@ -57,10 +57,10 @@ end
 % nout = max(nargout,1) - 2;
 
 % Change row into column
-S = reshape( S, N, 1);
+S = reshape(S, N, 1);
 
 % Standardization
-S = stnorm( S );
+S = stnorm(S);
 
 % If the parameters pmin, pmax are not introduced the subroutine uses
 % an estimate based on the length of the data segment

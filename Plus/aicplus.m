@@ -44,7 +44,7 @@ switch criterion
     % Bayesian Information Criterion (also known as the Schwarz-Bayesfunction ic = aicplus(model, criterion)
     % Criterion) -> to be revised
     case 'BIC'
-        ic = log(V) + Nnpar*log(N)/2;
+        ic = log(V/N) + Nnpar*log(N)/2;
 
     % Akaike Final Prediction Error
     case 'FPE'    
