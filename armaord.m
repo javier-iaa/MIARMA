@@ -177,8 +177,8 @@ for i=0:pmax,
 %                 model = armax(double(single(seg)),[j i],'Focus', ...
 %                     'stability','SearchMethod','lm','MaxIter',nit, ...
 %                     'LimitError',1);
-%                 model = armax(seg, [j i]);
-                model = armax(seg, [j i], 'SearchMethod', 'lsqnonlin');
+                model = armax(seg, [j i]);
+%                 model = armax(seg, [j i], 'SearchMethod', 'lsqnonlin');
             catch E
                 % Report the error messages to a file
                 if exist('nomfich','var'),
