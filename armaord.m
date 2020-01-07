@@ -96,12 +96,25 @@ if ~isempty(iw),
     
     % Look for aka temp files, get the p interval and load akamat
     d = dir(['temp_*_*' ext]);
+    pmax0 = zeros(size(d));
+    pmin0 = zeros(size(d));
     if ~isempty(d),
-        lst_cells = regexp( d(end).name, '_', 'split');
-        pmin0 = str2num( lst_cells{2} );
-        cell_pmax = lst_cells{3};
-        pmax0 = str2num( cell_pmax(1:end-4) );
-        akamat0 = dlmread( d(end).name );
+        for k=1:length(d)
+            lst_cells = regexp( d(k).name, '_', 'split');
+            pmin0(k) = str2num( lst_cells{2} );
+            cell_pmax= regexp( lst_cells{3}, '\.', 'split');
+            pmax0(k) = str2num( cell_pmax{1} );
+        end
+        pmx0 = max(pmax0);
+        pmin0 = pmin0(pmax0==pmx0);
+        pmax0 = pmx0;
+%         lst_cells = regexp( d(end).name, '_', 'split');
+%         pmin0 = str2num( lst_cells{2} );
+%         cell_pmax = lst_cells{3};
+%         pmax0 = str2num( cell_pmax(1:end-4) );
+%         akamat0 = dlmread( d(end).name );
+        akaname = ['temp_' num2str(pmin0) '_' num2str(pmax0) ext];
+        akamat0 = dlmread( akaname );
         akamat0 = akamat0';
         [a, b] = size( akamat0 );
     
