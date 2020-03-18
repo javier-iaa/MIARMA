@@ -45,22 +45,27 @@ function strout = MIARMA(varargin)
 %                   armafill.m      1.2.1
 %                   lincorr.m       1.0.4
 %                   sing.m
-%                   af_simp.m       0.1.4
+%                   af_simp.m       0.1.6
 %                   polintre.m
 %                   armaint.m       1.3.4
 %                   pred.m          1.0.1
 %
-% Version: 1.5.9
+% Version: 1.5.10
 %
-% Changes: - waitbar substituted by percentages
+% Changes: 
+% - af_simp 0.1.6
+% - repmax is passed through structure params to af_simp
+% - new section starting at line 622 where, eventually, gaps which couldn't
+% be filled with ARMA are filled using polintre. This is the default but in
+% future version there will be an opt out possibility.
 %
-% Date: 04/12/2019
+% Date: 18/03/2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
 
 %% Some definitions
-version = '1.5.9';
+version = '1.5.10';
 
 lgaps0 = NaN;
 Llin = NaN;
@@ -304,7 +309,7 @@ strout.params.ascii_struct = ascii_struct;
 
 % List of parameters for armafill/af_simp
 % params = [facmin facmax npi pmin rstd];
-params = [facmin facmax npi pmin];
+params = [facmin facmax npi pmin repmax];
 
 % Other optional parameters
 if isfield( strdata, 'igap')
@@ -616,6 +621,15 @@ if (exist('Llin','var'))
     Llin = Llin + length(find(flagout~=0));
 end
 
+%% Here goes a new section for always_int which fills the gaps left due to 
+% unsolved issues in armaint that activate the flag <go> to False
+% When ARMA cannot be used we will use other algorithm (polintre)
+% If the flag always_int is false this section should not be run.
+
+igap = indgap(flagout);
+[datout, flagout] = lincorr(datout, flagout, igap, inf);
+
+%% Save output
 if ~ascii_struct
     % This occurs only when MIARMA is called for test purposes only
     strout.timeout = timeout;
