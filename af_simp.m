@@ -1,11 +1,8 @@
 function [datout,flagout] = af_simp(datin,flagin,aka,ind1,params,varargin)
 % function [datout,flagout] = af_simp(datin,flagin,aka,ind1,params,varargin)
-% Simplified version of the armafill.m algorithm
+% Simplified version of armafill.m where segment length is fixed.
 %
-% Segment length is fixed.
-%
-% [datout,flagout] = af_simp(datin,flagin,aka,varargin) interpolates in the
-% gaps contained in data using ARMA models for the predictors
+% af_simp fill gaps using ARMA models as predictors for the extrapolations
 % Input:    datin - input data array
 %           flagin - status array. The gaps must be correctly flagged.
 %           aka - Akaike coefficient matrix
@@ -17,14 +14,23 @@ function [datout,flagout] = af_simp(datin,flagin,aka,ind1,params,varargin)
 %              npi - inf. limit in gap length for the ARMA interpolation
 %                (below this limit linear interpolation is used)
 %              pmin - inf. limit por the AR order
+%              repmax - maximum number of iterations
 % Output:   datout - ARMA interpolated data series
 %           flagout - residual status array
 % Calls:   armaint.m v1.3.4
-% Version: 0.1.5
-% Changes from the last version: wait bars substituted by percentages.
+% Version: 0.1.6
+% Changes from the last version: 
+% - New input parameter repmax and variable iter taking into account
+% iterations of the algorithm.
+% - The aka matrix is searched for the optimal order compatible with
+% condition set in line 232. When no optimal order is found with the
+% available data the algorithm continues to the next iteration and repeat
+% when af_simp is called again. If the max number of iterations <repmax> is
+% reached af_simp will try to use ARMA(2,0) model.
+% - Minor bugs fixed.
 % 
 % Author: Javier Pascual-Granado
-% Date: 04/12/2019
+% Date: 17/03/2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 L = length(datin);
@@ -39,6 +45,8 @@ facmin = params(1);
 facmax = params(2);
 npi = params(3);
 pmin = params(4);
+repmax = params(5);
+iter = varargin{1};
 
 % Data points used for the polynomial fitting.
 npint = 6;
@@ -74,14 +82,14 @@ if nargin==5,
 %     h = waitbar(0,sprintf(text_iter));
 else
     text_iter = sprintf('Gap filling iteration %d\n     Please wait...\n',...
-        varargin{1});
+        iter);
     fprintf(text_iter);
     fprintf('Start');
 %     h = waitbar(0,text_iter);
 end
 
 % Here begins the gap-filling process
- while i<=ind1f,
+while ind1f>=0,
     
     % Data segments selection
     if l1==2,   % only one gap
@@ -225,21 +233,24 @@ end
         akared = aka( akaind );
         
         if isempty(akared)
-%             if i==1
+            % try the simplest ARMA model if max iteration is reached
+            if iter == repmax
+                p = 2; 
+                q = 0;
+                ord = [p q];
+                d = sum(ord);
+                fac = len / d;
+            else
                 flagout(ind1(1):ind1(2)) = 1;
                 ind1(1:2)=[];
                 l1 = length(ind1);
                 ind1f = l1-2;
-%             else
-%                 flagout(ind1(i):ind1(i+1)) = 1;
-%                 ind1(i:(i+1))=[];
-%                 l1 = length(ind1);
-%                 ind1f = l1-2;
-%             end
-            % reinicialization
-            ord = ord1;
-            aka = aka1;
-            continue;
+
+                % reinicialization
+                ord = ord1;
+                aka = aka1;
+                continue;
+            end
         else
             minaka = min(akared);
             [cp, cq] = find(aka == minaka);
@@ -270,19 +281,16 @@ end
     [interp, go] = armaint(seg1, seg2, ord, np);
     
     % Finally the interpolated segment is inserted in datout
-%     if i==1
-        if go
-            datout(ind1(1):ind1(2)) = interp;
-            flagout(ind1(1):ind1(2)) = 0;
-%         else
-%             flagout(ind1(1):ind1(2)) = 1;
-        end
+    if go
+        datout(ind1(1):ind1(2)) = interp;
+        flagout(ind1(1):ind1(2)) = 0;
+    end
         
     % Recover data points that were taken out with sing
     reco0 = find(flagin(ind1(1):ind1(2))==-1);
     reco = ind1(1) - 1 + reco0;
 
-    if ~isempty(reco)
+    if ~isempty(reco) && go
         % Fix the local trends appearing due to insufficient data
         nd = 10;
         if len<nd
