@@ -1,8 +1,9 @@
-function [datout,flagout] = af_simp(datin,flagin,aka,ind1,params,varargin)
-% function [datout,flagout] = af_simp(datin,flagin,aka,ind1,params,varargin)
+function [datout,flagout] = af_simp(datin, flagin, aka, ind1, params, varargin)
+% function [datout,flagout] = af_simp(datin, flagin, aka, ind1, params, varargin)
 % Simplified version of armafill.m where segment length is fixed.
 %
 % af_simp fill gaps using ARMA models as predictors for the extrapolations
+%
 % Input:    datin - input data array
 %           flagin - status array. The gaps must be correctly flagged.
 %           aka - Akaike coefficient matrix
@@ -15,10 +16,14 @@ function [datout,flagout] = af_simp(datin,flagin,aka,ind1,params,varargin)
 %                (below this limit linear interpolation is used)
 %              pmin - inf. limit por the AR order
 %              repmax - maximum number of iterations
+%
 % Output:   datout - ARMA interpolated data series
 %           flagout - residual status array
-% Calls:   armaint.m v1.3.4
+%
+% Calls:   armaint.m
+%
 % Version: 0.1.6
+%
 % Changes from the last version: 
 % - New input parameter repmax and variable iter taking into account
 % iterations of the algorithm.
@@ -30,6 +35,7 @@ function [datout,flagout] = af_simp(datin,flagin,aka,ind1,params,varargin)
 % - Minor bugs fixed.
 % 
 % Author: Javier Pascual-Granado
+%
 % Date: 17/03/2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -40,7 +46,6 @@ l0 = length(ind1);
 datout = reshape(datin,L,1);
 
 %% Parameters %%
-
 facmin = params(1);
 facmax = params(2);
 npi = params(3);
@@ -70,8 +75,8 @@ aka1 = aka;
 ord1 = ord;
 flagout = flagin;
 l1 = l0;
-%% Gap-filling process %% 
 
+%% Gap-filling process %% 
 ind1f = l0-1;
 i = 1;
 
@@ -79,13 +84,11 @@ if nargin==5,
     text_iter = 'Gap filling iteration 1\n     Please wait...\n';
     fprintf(text_iter);
     fprintf('Start');
-%     h = waitbar(0,sprintf(text_iter));
 else
     text_iter = sprintf('Gap filling iteration %d\n     Please wait...\n',...
         iter);
     fprintf(text_iter);
     fprintf('Start');
-%     h = waitbar(0,text_iter);
 end
 
 % Here begins the gap-filling process
@@ -125,37 +128,19 @@ while ind1f>=0,
                 subi1( 1:nf ) = [];
             end
             seg1 = datout( subi1 );
-        else
-            
-%             if i==1,            % First gap
-                subi1 = 1:ind1(i)-1;
-                if flagout(subi1)==0.5,
-                    ind1(1:2)=[];
-                    l1 = length(ind1);
-                    ind1f = l1-2;
-                    continue;
-                end
-                nf = find( flagout( subi1 ) == 1, 1, 'last');
-                if ~isempty(nf),
-                    subi1( 1:nf ) = [];
-                end
-                seg1 = datout( subi1 );
-%             else
-%                 subi1 = (ind1(i-1)+1):(ind1(i)-1);
-%                 
-%                 if flagout(subi1)==0.5,
-%                     ind1(1:2)=[];
-%                     l1 = length(ind1);
-%                     ind1f = l1-2;
-%                     continue;
-%                 end
-%                 
-%                 nf = find( flagout( subi1 ) == 1, 1, 'last');
-%                 if ~isempty(nf),
-%                     subi1( 1:nf ) = [];
-%                 end
-%                 seg1 = datout( subi1 );
-%             end
+        else           
+            subi1 = 1:ind1(i)-1;
+            if flagout(subi1)==0.5,
+                ind1(1:2)=[];
+                l1 = length(ind1);
+                ind1f = l1-2;
+                continue;
+            end
+            nf = find( flagout( subi1 ) == 1, 1, 'last');
+            if ~isempty(nf),
+                subi1( 1:nf ) = [];
+            end
+            seg1 = datout( subi1 );
 
             if i==(l0-1),       % Last gap
                 subi2 = (ind1(i+1)+1):L;
@@ -178,7 +163,6 @@ while ind1f>=0,
     % number of lost datapoints in the gap
     np = ind1(i+1)-ind1(i)+1;
     
-%     waitbar(ind1(i)/L,h)
     fprintf(repmat('\b',1,5));
     fprintf('%3.0f %%', 100*ind1(i)/L);
 
@@ -204,20 +188,16 @@ while ind1f>=0,
                 seg1 = seg1((len-npint+1):end);
                 seg2 = seg2(1:npint);
             end
-            interp = polintre (seg1, seg2, np, 3);
             
-%             if i==1,                       
-                datout(ind1(1):ind1(2)) = interp;
-                flagout(ind1(1):ind1(2)) = 0;
-                ind1(1:2)=[];
-%             else                                    
-%                 datout(ind1(i):ind1(i+1)) = interp;
-%                 flagout(ind1(i):ind1(i+1)) = 0;
-%                 ind1(i:(i+1))=[];
-%             end
+            interp = polintre (seg1, seg2, np, 3);
+                 
+            datout(ind1(1):ind1(2)) = interp;
+            flagout(ind1(1):ind1(2)) = 0;
+            ind1(1:2)=[];
             
             l1 = length(ind1);
             ind1f = l1-1;
+            
             continue;
         end
     end
@@ -328,6 +308,7 @@ while ind1f>=0,
             pval_tot = polyval(pp_data, t_tot);
             subiint = (ssubi1(end)+1):(ssubi2(1)-1);
             pval_int = pval_tot( subiint) ;
+            
             % detrending of interp
             pp_interp = polyfit( subiint, interp', 2);
             pval_interp = polyval(pp_interp, subiint);
@@ -348,5 +329,5 @@ while ind1f>=0,
  
 fprintf(repmat('\b',1,5));
 fprintf('\n');
-% close(h);
+
 end
