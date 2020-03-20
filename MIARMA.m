@@ -39,33 +39,30 @@ function strout = MIARMA(varargin)
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 
-% Dependencies:     armaord_par.m   0.1
-%                   armaord.m       1.0.4
-%                   indgap.m        1.0.2
-%                   armafill.m      1.2.1
-%                   lincorr.m       1.0.4
+% Dependencies:     armaord_par.m   
+%                   armaord.m       
+%                   indgap.m        
+%                   armafill.m      
+%                   lincorr.m       
 %                   sing.m
-%                   af_simp.m       0.1.6
+%                   af_simp.m       
 %                   polintre.m
-%                   armaint.m       1.3.4
-%                   pred.m          1.0.1
+%                   armaint.m       
+%                   pred.m          
 %
-% Version: 1.5.10
+% Version: 1.5.11.0
 %
 % Changes: 
-% - af_simp 0.1.6
-% - repmax is passed through structure params to af_simp
-% - new section starting at line 622 where, eventually, gaps which couldn't
-% be filled with ARMA are filled using polintre. This is the default but in
-% future version there will be an opt out possibility.
+% - Minor corrections.
+% - Showing the number of gaps at every iteration of af_simp
 %
-% Date: 18/03/2020
+% Date: 20/03/2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
 
 %% Some definitions
-version = '1.5.10';
+version = '1.5.11.0';
 
 lgaps0 = NaN;
 Llin = NaN;
@@ -380,6 +377,7 @@ if isempty(find(cellfun(cellfind('igap'),varargin),1))
     Llin = lgaps0 - lgaps;
     
     % Correction of the status array for small data segments
+    % If you want to disable this correction just set npz to zero
     if npz > 0
         fprintf('Step 2 - Small segments correction...\n');
         flagin = sing(flagin, npz, igap);
@@ -453,7 +451,7 @@ if isempty(find(cellfun(cellfind('aka'),varargin),1))
         seg = datout((igap(I*2-2)+1):(igap(I*2-1)-1));
     end
     
-    % Mseg is the max. length of the segment use to calculate the order
+    % mseg is the max. length of the segment use to calculate the order
     if ML>mseg
         seg = seg(1:mseg);
     end
@@ -522,12 +520,13 @@ j = 1; % iteration-number
 rep = 0; % used for the termination condition
 
 l0 = length(igap);
-l1 = l0-1;
+% l1 = l0-1;
 
 flagout = flagin;
 
 % Number of gaps
-numgap = floor(l0/2);
+numgap = round(l0/2);
+fprintf('Number of gaps: %d\n', numgap);
 
 if numgap==1
     if simpl,
@@ -536,15 +535,14 @@ if numgap==1
         [datout, flagout] = armafill( datout, flagout, aka, igap, params, j );
     end
     
-    if mod(j,2)==0
-        datout = datout(end:-1:1);
-    end
-    
-    % Recover data segments that were taken out with sing
-%     datout(flagin==-1) = datin(flagin==-1);
+%     if mod(j,2)==0
+%         datout = datout(end:-1:1);
+%     end
 
-%     datout(flagout~=0) = [];
-%     timeout(flagout~=0) = [];
+    l1 = length(igap);
+    numgap = round(l1/2);
+    fprintf('Number of gaps: %d\n', numgap);
+    
 else
     while numgap>1
         while (rep<repmax && l0>=2)
@@ -557,17 +555,27 @@ else
             igap = indgap(flagout,j+1);
             
             if isempty(igap)
-                l1 = 0;
+%                 l1 = 0;
+                numgap = 0;
+                fprintf('Number of gaps: 0\n');
                 break;
             end
             
-            flagout = sing(flagout, npz, igap);
+            % Correction of the status array for small data segments
+            % If you want to disable this correction just set npz to zero
+            if npz > 0
+                flagout = sing(flagout, npz, igap);
+            end
 
             igap = indgap(flagout,1);
             
+            % Number of gaps
             l1 = length(igap);
-
+            numgap = round(l1/2);
+            fprintf('Number of gaps: %d\n', numgap);
+            
             j = j + 1;
+            
             % Every iteration begins from the opposite side of the series
             datout = datout(end:-1:1);
             flagout = flagout(end:-1:1);
@@ -591,16 +599,17 @@ else
             igap = igap(end:-1:1);
         end
 
-        numgap = floor(l1/2);
-
+%         numgap = floor(l1/2);
+        % If the number of gaps is still greater than 1 it will merge some
+        % of them and repeat the main loop
         if numgap>1
-            [flagout,go] = gapmerge(flagout,igap);
+            [flagout, go] = gapmerge(flagout,igap);
             if go==true
                 flagin(flagout==-1)=-1;
                 igap = indgap(flagout,j+1);
                 rep = 0;
                 l0 = length(igap);
-                l1 = l0-1;
+%                 l1 = l0-1;
             else
                 break;
             end
