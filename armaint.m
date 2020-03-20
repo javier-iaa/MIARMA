@@ -1,5 +1,5 @@
-function [interp,go] = armaint(seg1,seg3,ord,N2)
-% function [interp,go] = armaint(seg1,seg3,ord,N2) interpolates N2
+function [interp, go] = armaint(seg1, seg3, ord, N2)
+% function [interp,go] = armaint(seg1, seg3, ord, N2) interpolates N2
 % data points between the segments seg1 and seg3 using ARMA models.
 % To generate the output segment interp a triangular weight is used for
 % both segments.
@@ -10,13 +10,13 @@ function [interp,go] = armaint(seg1,seg3,ord,N2)
 % Outputs:      interp - interpolated segment
 %               go - true when the interpolation works and false otherwise
 
-% Version: 1.3.5
+% Version: 1.3.6
 % Changes from the last version:
-% Bug fixes.
+% Bug fixes. Verbosity reduced.
 %
 %  Calls: sigma_clip.m
 %  Author(s): Javier Pascual-Granado
-%  Date: 19/11/2019
+%  Date: 20/03/2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 go = true;
@@ -402,10 +402,10 @@ if sig_yf > fac_sig*sig_s1 && sig_yf > fac_sig*sig_s3
     sig_yf = std(yfor);
     
     if sig_yf > fac_sig*sig_s1 && sig_yf > fac_sig*sig_s3
-        yfor = yfor.*(sig_s1/sig_yf);
-%        interp = NaN(1,N2);
-%        go = false;
-%        return
+%         yfor = yfor.*(sig_s1/sig_yf);
+       interp = NaN(1,N2);
+       go = false;
+       return
     end
 end
 
@@ -453,10 +453,10 @@ if sig_yb > fac_sig*sig_s3 && sig_yb > fac_sig*sig_s1
     sig_yb = std(yback);
     
     if sig_yb > fac_sig*sig_s3 && sig_yb > fac_sig*sig_s1
-        yback = yback.*(sig_s3/sig_yb);
-%         interp = NaN(1,N2);
-%         go = false;
-%         return
+%         yback = yback.*(sig_s3/sig_yb);
+        interp = NaN(1,N2);
+        go = false;
+        return
     end
 end
 
