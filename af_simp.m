@@ -22,21 +22,15 @@ function [datout,flagout] = af_simp(datin, flagin, aka, ind1, params, varargin)
 %
 % Calls:   armaint.m
 %
-% Version: 0.1.6
+% Version: 0.1.7
 %
 % Changes from the last version: 
-% - New input parameter repmax and variable iter taking into account
-% iterations of the algorithm.
-% - The aka matrix is searched for the optimal order compatible with
-% condition set in line 232. When no optimal order is found with the
-% available data the algorithm continues to the next iteration and repeat
-% when af_simp is called again. If the max number of iterations <repmax> is
-% reached af_simp will try to use ARMA(2,0) model.
-% - Minor bugs fixed.
+% - 2 bugs fixed.
+% - repmax no longer used
 % 
 % Author: Javier Pascual-Granado
 %
-% Date: 17/03/2020
+% Date: 21/03/2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 L = length(datin);
@@ -50,7 +44,6 @@ facmin = params(1);
 facmax = params(2);
 npi = params(3);
 pmin = params(4);
-repmax = params(5);
 iter = varargin{1};
 
 % Data points used for the polynomial fitting.
@@ -130,6 +123,21 @@ while ind1f>=0,
             seg1 = datout( subi1 );
         else           
             subi1 = 1:ind1(i)-1;
+            % If the length of seg1 is less than 3 no ARMA model can be
+            % fitted so this data segment is unusable.
+            % Don't confuse this with what happens with the sing 
+            % algorithm, which can be used to improve the quality of 
+            % interpolations.
+            if length(subi1) < 3,
+                ind1(1:2)=[];
+                l1 = length(ind1);
+                ind1f = l1-2;
+                flagout(subi1) = -1;
+                continue;
+            end
+            % Similarly if this segment cannot be used to perform a forward
+            % extrapolation, the algorithm jumps to the next gap and for
+            % the next iteration to fill this one
             if flagout(subi1)==0.5,
                 ind1(1:2)=[];
                 l1 = length(ind1);
@@ -146,8 +154,23 @@ while ind1f>=0,
                 subi2 = (ind1(i+1)+1):L;
                 seg2 = datout( subi2 );
             else
-                subi2 = (ind1(i+1)+1):(ind1(i+2)-1);
-                
+                subi2 = (ind1(i+1)+1):(ind1(i+2)-1);                
+                % If the length of seg2 is less than 3 no ARMA model can be
+                % fitted so this data segment is unusable.
+                % Don't confuse this with what happens with the sing 
+                % algorithm, which can be used to improve the quality of 
+                % interpolations.
+
+                if length(subi2) < 3,
+                    ind1(1:2)=[];
+                    l1 = length(ind1);
+                    ind1f = l1-2;
+                    flagout(subi2) = -1;
+                    continue;
+                end
+                % Similarly if this segment cannot be used to perform a forward
+                % extrapolation, the algorithm jumps to the next gap and for
+                % the next iteration to fill this one
                 if flagout(subi2)==-0.5,
                     ind1(1:2)=[];
                     l1 = length(ind1);
@@ -213,8 +236,8 @@ while ind1f>=0,
         akared = aka( akaind );
         
         if isempty(akared)
-            % try the simplest ARMA model if max iteration is reached
-            if iter == repmax
+            % try the simplest ARMA model when there is only one gap
+            if ind1f == 2
                 p = 2; 
                 q = 0;
                 ord = [p q];
