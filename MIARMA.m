@@ -50,19 +50,18 @@ function strout = MIARMA(varargin)
 %                   armaint.m       
 %                   pred.m          
 %
-% Version: 1.5.11.0
+% Version: 1.5.11.1
 %
 % Changes: 
 % - Minor corrections.
-% - Showing the number of gaps at every iteration of af_simp
 %
-% Date: 20/03/2020
+% Date: 21/03/2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
 
 %% Some definitions
-version = '1.5.11.0';
+version = '1.5.11.1';
 
 lgaps0 = NaN;
 Llin = NaN;
@@ -306,7 +305,7 @@ strout.params.ascii_struct = ascii_struct;
 
 % List of parameters for armafill/af_simp
 % params = [facmin facmax npi pmin rstd];
-params = [facmin facmax npi pmin repmax];
+params = [facmin facmax npi pmin];
 
 % Other optional parameters
 if isfield( strdata, 'igap')
