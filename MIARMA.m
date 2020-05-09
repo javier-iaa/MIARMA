@@ -50,18 +50,18 @@ function strout = MIARMA(varargin)
 %                   armaint.m       
 %                   pred.m          
 %
-% Version: 1.5.11.1
+% Version: 1.5.11.2
 %
 % Changes: 
-% - Minor corrections.
+% - Introduced new parameter for aka file name.
 %
-% Date: 21/03/2020
+% Date: 09/05/2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
 
 %% Some definitions
-version = '1.5.11.1';
+version = '1.5.11.2';
 
 lgaps0 = NaN;
 Llin = NaN;
@@ -89,6 +89,7 @@ if ischar( varargin{1} )
     % Here data is imported from an ASCII file having 3 columns: time, flux
     % and status
     strdata = importdata(filename);
+    akaname = filename;
     timein = strdata.data(:,1);
     datin = strdata.data(:,2);
     flagin = strdata.data(:,3);
@@ -102,12 +103,14 @@ else
     
 end
 
-datout = datin;
-timeout = timein;
 L = length(datin);
 
+% Output variables
+datout = datin;
+timeout = timein;
+
 %% Parameters
-% Optional parameter input file
+% Optional input file which contains a list of parameters
 if (nargin == 2 && ischar(varargin{2}))
     parname = varargin{2};
     pardata = importdata(parname);
@@ -212,6 +215,13 @@ if (nargin == 2 && ischar(varargin{2}))
         temp = pardata.data(pari);
     end
     
+    % Full name for the file containing the Akaike matrix
+    pari = strcmp(pardata.textdata,'akaname');
+    pari = circshift(pari,-2);
+    if ~isempty(pardata.data(pari))
+        akaname = pardata.data(pari);
+    end
+    
 else
     % default values
     simpl = true;
@@ -284,6 +294,10 @@ else
             ascii_struct = strdata.params.ascii_struct;
         end
         
+        if isfield(strdata.params, 'akaname')
+            akaname = strdata.params.akaname;
+        end
+        
     end
     
 end
@@ -302,6 +316,7 @@ strout.params.npi= npi;
 strout.params.facmax = facmax;
 strout.params.facmin = facmin;
 strout.params.ascii_struct = ascii_struct;
+% strout.params.akaname = akaname;
 
 % List of parameters for armafill/af_simp
 % params = [facmin facmax npi pmin rstd];
@@ -459,8 +474,8 @@ if isempty(find(cellfun(cellfind('aka'),varargin),1))
     
     % Optimal order (p,q) for the ARMA model of seg
     if nuc == 1
-        if exist( 'filename', 'var' )
-            fileaka = [filename(1:end-4) '_' num2str(pmin) ...
+        if exist( 'akaname', 'var' )
+            fileaka = [akaname(1:end-4) '_' num2str(pmin) ...
                 '_' num2str(pmax)];
             aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, 'w', fileaka);
             
