@@ -1,0 +1,13 @@
+20-May-20   * MIARMA 1.5.13.0
+            - Aka file name is padded with zeros in order to normalize the extension of the field.
+            - Some default values for parameters have been changed (refined).
+            - Minor improvements.
+            * armaord 1.0.9
+            - Bug fixes.
+            - Error exceptions.
+            - Polished code.
+            * plotint 0.2
+            - Error control.
+            - Increased marks.
+            * armaint 1.3.8
+            - Improved consistency check to avoid that the extrapolations explode using the standard deviation of the differences.
