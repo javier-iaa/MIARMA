@@ -10,21 +10,22 @@ function [interp, go] = armaint(seg1, seg3, ord, N2)
 % Outputs:      interp - interpolated segment
 %               go - true when the interpolation works and false otherwise
 
-% Version: 1.3.7
+% Version: 1.3.8
 % Changes from the last version:
-% Bug fixes. Try and catch for each model fitting command.
+% Improved consistency check to avoid that the extrapolations explode using
+% the standard deviation of the differences.
 %
 %  Calls: sigma_clip.m
 %  Author(s): Javier Pascual-Granado
-%  Date: 21/03/2020
+%  Date: 20/05/2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 go = true;
 interp = NaN;
 msg = [];
 
-% Std factor for sigma clipping
-fac_sig = 3;
+% Coefficient used to detect if the extrapolation explodes
+fac_sig = 5;
 
 %% Algorithm properties
 % Zstability: Specifies the maximum distance of all poles 
@@ -387,6 +388,7 @@ if strcmp(modo, 'old')
     ts = 1;
     data1 = iddata(seg1n(1:end-1),[],ts);
     yfor = pred(model1,data1,N2+1,'e');
+%     yfor = pred(model1,data1,N2,'e');
     yfor = yfor.y;
 
 elseif strcmp(modo, 'new')
@@ -429,6 +431,7 @@ if strcmp(modo, 'old')
     ts = 1;
     data2 = iddata(flipud(seg3n(2:end)),[],ts);
     yback = pred(model2,data2,N2+1,'e');
+%     yback = pred(model2,data2,N2,'e');
     yback = yback.y;
 
 elseif strcmp(modo, 'new')
@@ -473,9 +476,13 @@ yback = ( (yback + r2).*sig_s3 + mean(seg3) );
 % Validation with sigma clipping
 % This code should be used with care when the extrapolations are unstable.
 
-sig_yf = std(yfor);
+% The sigma of the differences shows better when the extrapolation explodes
+sigd_yf = std(diff(yfor));
+sigd_s1 = std(diff(seg1));
+sigd_s3 = std(diff(seg3));
 
-if sig_yf > fac_sig*sig_s1 && sig_yf > fac_sig*sig_s3
+if sigd_yf > fac_sig*sigd_s1 && sigd_yf > fac_sig*sigd_s3
+    
     seg1 = sigma_clip(seg1, 2);
     seg1n = (seg1-mean(seg1))./std(seg1);
     sig_s1 = std(seg1);
@@ -492,6 +499,7 @@ if sig_yf > fac_sig*sig_s1 && sig_yf > fac_sig*sig_s3
         ts = 1;
         data1 = iddata(seg1n(1:end-1),[],ts);
         yfor = pred(model1,data1,N2+1,'e');
+%         yfor = pred(model1,data1,N2,'e');
         yfor = yfor.y;
         
     elseif strcmp(modo, 'new')
@@ -527,9 +535,10 @@ if sig_yf > fac_sig*sig_s1 && sig_yf > fac_sig*sig_s3
     r1 = rstd1*randn(size(yfor));
     yfor = ( (yfor + r1).*sig_s1 + mean(seg1) );
     
-    sig_yf = std(yfor);
+    sigd_yf = std(diff(yfor));
+    sigd_s1 = std(diff(seg1));
     
-    if sig_yf > fac_sig*sig_s1 && sig_yf > fac_sig*sig_s3
+    if sigd_yf > fac_sig*sigd_s1 && sigd_yf > fac_sig*sigd_s3
 %         yfor = yfor.*(sig_s1/sig_yf);
        interp = NaN(1,N2);
        go = false;
@@ -541,9 +550,9 @@ end
 % This code can produce bugs and should be used with care and only when
 % the extrapolations are unstable.
 
-sig_yb = std(yback);
+sigd_yb = std(diff(yback));
 
-if sig_yb > fac_sig*sig_s3 && sig_yb > fac_sig*sig_s1
+if sigd_yb > fac_sig*sigd_s3 && sigd_yb > fac_sig*sigd_s1
     seg3 = sigma_clip(seg3,2);
     seg3n = (seg3-mean(seg3))./std(seg3);
     sig_s3 = std(seg3);
@@ -560,6 +569,7 @@ if sig_yb > fac_sig*sig_s3 && sig_yb > fac_sig*sig_s1
         ts = 1;
         data2 = iddata(flipud(seg3n(2:end)),[],ts);
         yback = pred(model2,data2,N2+1,'e');
+%         yback = pred(model2,data2,N2,'e');
         yback = yback.y;
         
     elseif strcmp(modo, 'new')
@@ -596,9 +606,10 @@ if sig_yb > fac_sig*sig_s3 && sig_yb > fac_sig*sig_s1
     r2 = rstd2*randn(size(yback));
     yback = ( (yback + r2).*sig_s3 + mean(seg3) );
     
-    sig_yb = std(yback);
+    sigd_yb = std(diff(yback));
+    sigd_s3 = std(diff(seg3));
     
-    if sig_yb > fac_sig*sig_s3 && sig_yb > fac_sig*sig_s1
+    if sigd_yb > fac_sig*sigd_s3 && sigd_yb > fac_sig*sigd_s1
 %         yback = yback.*(sig_s3/sig_yb);
         interp = NaN(1,N2);
         go = false;
@@ -609,6 +620,7 @@ end
 % Interpolated data
 if isempty(msg)
     interp = (1-w').*yfor(2:end) + w'.*yback(1:end-1);
+%     interp = (1-w').*yfor + w'.*yback;
   % interp = interp + rstd*randn(size(interp));
 end
 
