@@ -14,10 +14,10 @@ function varargout = armaord(S, varargin)
 %   varargout{3} = pmax
 %   varargout{4} = size of the segment evaluated
 
-% Version: 1.0.8
-% Changes: AICc, BIC, HQ, FPE in addition to AIC
+% Version: 1.0.9
+% Changes: bug fixes.
 % Author: Javier Pascual-Granado
-% $Date: 11/12/2019$
+% $Date: 18/05/2020$
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Information Criterion
@@ -95,14 +95,16 @@ if ~isempty(iw),
     nomfich = strcat( nom, ext );
     
     % Look for aka temp files, get the p interval and load akamat
-    d = dir(['temp_*_*' ext]);
+    idname = nom(1:end-8);
+    d = dir([idname '*' ext]);
+%     d = dir(['temp_*_*' ext]);
     pmax0 = zeros(size(d));
     pmin0 = zeros(size(d));
     if ~isempty(d),
         for k=1:length(d)
             lst_cells = regexp( d(k).name, '_', 'split');
-            pmin0(k) = str2num( lst_cells{2} );
-            cell_pmax= regexp( lst_cells{3}, '\.', 'split');
+            pmin0(k) = str2num( lst_cells{end-1} );
+            cell_pmax= regexp( lst_cells{end}, '\.', 'split');
             pmax0(k) = str2num( cell_pmax{1} );
         end
         pmx0 = max(pmax0);
@@ -113,41 +115,51 @@ if ~isempty(iw),
 %         cell_pmax = lst_cells{3};
 %         pmax0 = str2num( cell_pmax(1:end-4) );
 %         akamat0 = dlmread( d(end).name );
-        akaname = ['temp_' num2str(pmin0) '_' num2str(pmax0) ext];
+        pmin0str = num2str(pmin0,'%03.f');
+        pmax0str = num2str(pmax0,'%03.f');
+        akaname = [idname '_' pmin0str '_' pmax0str ext];
         akamat0 = dlmread( akaname );
         akamat0 = akamat0';
         [a, b] = size( akamat0 );
     
-        if (pmin >= pmin0) && (pmax <= pmax0),
-            akamat = akamat0(1:r,1:(pmax+1));
-            varargout{1} = akamat;
-            return
-        else
-            if (pmin >= pmin0) && (pmin <= pmax0),  % pmax > pmax0
-                % Ojo, pmin > pmax0 not considered yet
-                nomfich = ['temp_' num2str(pmin0) '_' num2str(pmax) ...
-                    ext];
+        if (pmin >= pmin0)
+            if (pmin > pmax0)
+                % Disjoint intervals. Not implemented yet
+                err = MException('ResultChk:OutOfRange', ...
+                    'Outside of expected range, not implemented yet');
+                throw(err)
+            elseif (pmax <= pmax0)
+                akamat = akamat0(1:r,1:(pmax+1));
+                varargout{1} = akamat;
+                return
+            else
+                % Note that the final Akaike matrix collect the maximum
+                % number of coefficients so in this case it will be a
+                % pmin0 x pmax matrix
+                pmaxstr = num2str(pmax,'%03.f');
+                nomfich = [idname '_' pmin0str '_' pmaxstr ext];
                 r = pmax - pmin0 + 1;
                 akamat = NaN( r, pmax+1 );
                 akamat(1:a,1:b) = akamat0;
-                
-            elseif (pmin <= pmin0) && (pmax < pmax0),
-                nomfich = ['temp_' num2str(pmin) '_' num2str(pmax0) ...
-                    ext];
+            end
+        else
+            if (pmax < pmin0)
+                % Disjoint intervals. Not implemented yet
+                err = MException('ResultChk:OutOfRange', ...
+                    'Outside of expected range, not implemented yet');
+                throw(err)
+            elseif (pmax <= pmax0)
+                pminstr = num2str(pmin,'%03.f');
+                nomfich = [idname '_' pminstr '_' pmax0str ext];
                 r = pmax0 - pmin + 1;
                 akamat = NaN( r, pmax0+1 );
-                
-            else % (pmin <= pmin0) && (pmax > pmax0),
-                % nomfich and akamat preserved
-                
             end
-                
+            % if pmax > pmax0 nothing needs to be done, nomfich and akamat 
+            % are preserved
         end
-        
-    end
     modo = true;
     fichw = fopen(nomfich, 'w');
-    
+    end
 end
 
 %% Main loop
