@@ -7,13 +7,12 @@ function [data1, flag1] = lincorr(data, flag, ind, npi)
 %           npi - limits the size of the gaps to be interpolated.
 % Ouputs:   data1 - time series after lin.interpolation
 %           flag1 - new status array
-% Version: 1.0.4
-% Changes from the last version: now using polintre.m for the polynomial
-% interpolation.
+% Version: 1.0.5
+% Changes from the last version: Minor fix.
 %
 % Calls: polintre.m
 % Author(s): Javier Pascual-Granado
-% Date: 30/10/2019
+% Date: 20/05/2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Order used for the polynomial interpolation
@@ -67,7 +66,7 @@ while i <= L-1,
 
     dif = ind(i+1)-ind(i)+1;
     
-    if dif < npi,
+    if dif <= npi,
         if lseg1>npint
             seg1 = seg1((lseg1-npint+1):end);
         end
