@@ -50,18 +50,21 @@ function strout = MIARMA(varargin)
 %                   armaint.m       
 %                   pred.m          
 %
-% Version: 1.5.11.2
+% Version: 1.5.13.0
 %
 % Changes: 
-% - Introduced new parameter for aka file name.
+% - Aka file name is padded with zeros in order to normalize the extension
+% of the field.
+% - Some default values for parameters changed.
+% - Minor improvements.
 %
-% Date: 09/05/2020
+% Date: 20/05/2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
 
 %% Some definitions
-version = '1.5.11.2';
+version = '1.5.13.0';
 
 lgaps0 = NaN;
 Llin = NaN;
@@ -232,8 +235,8 @@ else
     pmin = 2;
     pmax = 30;
     repmax = 3;
-    npz = 8;
-    npi = 6;
+    npz = 36;
+    npi = 4;
     facmax = 6;
     facmin = 4;
     ascii_struct = false;
@@ -473,14 +476,16 @@ if isempty(find(cellfun(cellfind('aka'),varargin),1))
     fprintf('Step 4 - Order estimation\nPlease wait...\n');
     
     % Optimal order (p,q) for the ARMA model of seg
+    pminstr = num2str(pmin,'%03.f');
+    pmaxstr = num2str(pmax,'%03.f');
+    
     if nuc == 1
         if exist( 'akaname', 'var' )
-            fileaka = [akaname(1:end-4) '_' num2str(pmin) ...
-                '_' num2str(pmax)];
+            fileaka = [akaname(1:end-4) '_' pminstr '_' pmaxstr];
             aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, 'w', fileaka);
             
         elseif temp            
-            fileaka = ['temp_' num2str(pmin) '_' num2str(pmax)];
+            fileaka = ['temp_' pminstr '_' pmaxstr];
             aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, 'w', fileaka);
             
         else            
@@ -579,9 +584,8 @@ else
             % If you want to disable this correction just set npz to zero
             if npz > 0
                 flagout = sing(flagout, npz, igap);
+                igap = indgap(flagout,1);
             end
-
-            igap = indgap(flagout,1);
             
             % Number of gaps
             l1 = length(igap);
