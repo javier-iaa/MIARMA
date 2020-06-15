@@ -14,10 +14,10 @@ function varargout = armaord(S, varargin)
 %   varargout{3} = pmax
 %   varargout{4} = size of the segment evaluated
 
-% Version: 1.0.9
+% Version: 1.0.10
 % Changes: bug fixes.
 % Author: Javier Pascual-Granado
-% $Date: 18/05/2020$
+% $Date: 21/05/2020$
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Information Criterion
@@ -157,9 +157,9 @@ if ~isempty(iw),
             % if pmax > pmax0 nothing needs to be done, nomfich and akamat 
             % are preserved
         end
+    end
     modo = true;
     fichw = fopen(nomfich, 'w');
-    end
 end
 
 %% Main loop
