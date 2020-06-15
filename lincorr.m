@@ -7,12 +7,12 @@ function [data1, flag1] = lincorr(data, flag, ind, npi)
 %           npi - limits the size of the gaps to be interpolated.
 % Ouputs:   data1 - time series after lin.interpolation
 %           flag1 - new status array
-% Version: 1.0.5
-% Changes from the last version: Minor fix.
+% Version: 1.0.6
+% Changes from the last version: waitbars removed.
 %
 % Calls: polintre.m
 % Author(s): Javier Pascual-Granado
-% Date: 20/05/2020
+% Date: 27/05/2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Order used for the polynomial interpolation
@@ -36,8 +36,7 @@ end
 
 L = length(ind);
 
-h = waitbar(0,'Step 1 - Small gaps correction...');
-
+% h = waitbar(0,'Step 1 - Small gaps correction...');
 
 i=1;
 while i <= L-1,
@@ -57,7 +56,7 @@ while i <= L-1,
     
     if isempty(seg1) || isempty(seg2),
         i = i+2;
-        waitbar(i/L,h);
+%         waitbar(i/L,h);
         continue;
     end
     
@@ -96,7 +95,7 @@ while i <= L-1,
     end
 
     i = i+2;
-    waitbar(i/L,h);
+%     waitbar(i/L,h);
 end
 
-close(h);
+% close(h);
