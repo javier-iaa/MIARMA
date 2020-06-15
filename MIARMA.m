@@ -36,9 +36,12 @@ function strout = MIARMA(varargin)
 %            igap - gap indexes
 %            params - a complete list of parameters used for computation
 %
+% Note:  All gaps must be correctly flagged for the gap-filling algorithm 
+% to give an adequate output.
+%
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
-
+%
 % Dependencies:     armaord_par.m   
 %                   armaord.m       
 %                   indgap.m        
@@ -50,21 +53,18 @@ function strout = MIARMA(varargin)
 %                   armaint.m       
 %                   pred.m          
 %
-% Version: 1.5.13.0
+% Version: 1.5.13.1
 %
 % Changes: 
-% - Aka file name is padded with zeros in order to normalize the extension
-% of the field.
-% - Some default values for parameters changed.
-% - Minor improvements.
+% - Header introduced and warning messages cleaned.
 %
-% Date: 20/05/2020
+% Date: 21/05/2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
 
 %% Some definitions
-version = '1.5.13.0';
+version = '1.5.13.1';
 
 lgaps0 = NaN;
 Llin = NaN;
@@ -72,8 +72,17 @@ Llin = NaN;
 % Call definition of cellfind function
 cellfind = @(string)(@(cell_contents)(strcmp(string,cell_contents)));
 
-fprintf('Warning: All gaps must be correctly flagged for the gap-filling\n')
-fprintf('algorithm to give an adequate output\n\n');
+% fprintf('Warning: All gaps must be correctly flagged for the gap-filling\n')
+% fprintf('algorithm to give an adequate output\n\n');
+
+% Header
+fprintf('\n #############################################################\n');
+fprintf(' #                                                           #\n');
+fprintf(' #                    MIARMA   %s                      #\n', version);
+fprintf(' #    by  J.Pascual-Granado, IAA-CSIC, Spain. 2020           #\n');
+fprintf(' #               License GNU GPL v3.0                        #\n');
+fprintf(' #                                                           #\n');
+fprintf(' #############################################################\n\n');
 
 %% Input data
 if ischar( varargin{1} )
