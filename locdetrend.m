@@ -1,6 +1,16 @@
-function datout = locdetrend(datout, datin, reco, seg1, seg2, interp)
-% function datout = locdetrend(datout, datin, reco, seg1, seg2, interp)
+function datout = locdetrend(datout, datin, reco, reco0, seg1, seg2, interp, npint, np, ind1)
+% function datout = locdetrend(datout, datin, reco, reco0, seg1, seg2, interp, npint, np, ind1)
 % Fix local trends that might be not modeled properly introducing jumps
+%
+% Version: 0.1
+%
+% Changes from the last version: 
+% - Minor fixes.
+% 
+% Author: Javier Pascual-Granado
+%
+% Date: 24/06/2020
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 nd = 10;
 L = length(datin);

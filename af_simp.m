@@ -22,16 +22,14 @@ function [datout,flagout] = af_simp(datin, flagin, aka, ind1, params, varargin)
 %
 % Calls:   armaint.m
 %
-% Version: 0.1.8
+% Version: 0.1.9
 %
 % Changes from the last version: 
-% - Call subroutine locdetrend.m to fix jumps between interpolated and modeled 
-% segments that might occur when some trends that appear in the full version of the 
-% time series are not noticeable in local data segments.
+% - Minor fixes.
 % 
 % Author: Javier Pascual-Granado
 %
-% Date: 27/03/2020
+% Date: 24/06/2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 L = length(datin);
@@ -91,7 +89,8 @@ while ind1f>=0,
     % Data segments selection
     if l1==2,   % only one gap
         if ind1(i)==1,
-            seg2 = datout(ind1(i+1)+1:end);
+            subi2 = (ind1(i+1)+1):L;
+            seg2 = datout( subi2 );
             seg1 = NaN;
         else
             if ind1(i+1)==L
@@ -296,7 +295,7 @@ while ind1f>=0,
 
     if ~isempty(reco) && go
         % Fix local trends that might be not modeled properly introducing jumps
-        datout = locdetrend(datout, datin, reco, seg1, seg2, interp);
+        datout = locdetrend(datout, datin, reco, reco0, seg1, seg2, interp, npint, np, ind1);
         datout(reco) = datin(reco);
     end
     
