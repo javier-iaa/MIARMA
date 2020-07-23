@@ -2,13 +2,7 @@ function strout = MIARMA(varargin)
 % function strout = MIARMA(varargin) 
 % interpolates datapoints in a gapped time series using ARMA models to
 % predict the segments of data.
-% Inputs:   filename of an ASCII file containing the input data array, the
-%           corresponding time array, and the status array
-%           MIARMA( filename )
-%           Also a parameter filename can be given as second input
-%           MIARMA( filename, param )
-%
-% Alternative call:
+% Inputs:   
 %           MIARMA( strdata )
 %            where strdata is a struct that contains the necessary inputs:
 %             time, data, stat
@@ -53,18 +47,19 @@ function strout = MIARMA(varargin)
 %                   armaint.m       
 %                   pred.m          
 %
-% Version: 1.5.13.1
+% Version: x.5.13.1
 %
 % Changes: 
-% - Header introduced and warning messages cleaned.
+% - This is a transition version where the code is cleaned in order to 
+% facilitate the posterior translation to R language.
 %
-% Date: 21/05/2020
+% Date: 23/07/2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
 
 %% Some definitions
-version = '1.5.13.1';
+version = 'x.5.13.1';
 
 lgaps0 = NaN;
 Llin = NaN;
@@ -85,35 +80,10 @@ fprintf(' #                                                           #\n');
 fprintf(' #############################################################\n\n');
 
 %% Input data
-if ischar( varargin{1} )
-    
-    filename = varargin{ind};
-    
-    % This is for CoRoT data only    
-    if strcmp( filename(1:8), 'AN2_STAR' )
-        field = 'sismo';
-    elseif strcmp( filename(1:8), 'EN2_STAR' )
-        field = 'exo';
-    else
-        field = 'unknown';
-    end
-    
-    % Here data is imported from an ASCII file having 3 columns: time, flux
-    % and status
-    strdata = importdata(filename);
-    akaname = filename;
-    timein = strdata.data(:,1);
-    datin = strdata.data(:,2);
-    flagin = strdata.data(:,3);
-    
-else
-    strdata = varargin{1};
-    timein = strdata.time;
-    datin = strdata.data;
-    flagin = strdata.stat;
-    field = 'unknown';
-    
-end
+strdata = varargin{1};
+timein = strdata.time;
+datin = strdata.data;
+flagin = strdata.stat;
 
 L = length(datin);
 
