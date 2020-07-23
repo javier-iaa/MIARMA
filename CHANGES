@@ -1,21 +1,6 @@
-26-May-20	* MIARMA 1.5.13.1
-			- Header introduced and warning messages cleaned.
-			* lincor 1.0.6
-			- waitbars removed
-			* af_simp 0.1.8
-			- Call locdetrend function to fix jumps between interpolated and modeled segments that might occur when some trends that appear in  the full version of the time series are not noticeable in local data segments. This was previously part of af_simp code which has been reconverted to a subroutine.
-			* locdetrend 0.1
-
-20-May-20   * MIARMA 1.5.13.0
-            - Aka file name is padded with zeros in order to normalize the extension of the field.
-            - Some default values for parameters have been changed (refined).
-            - Minor improvements.
-            * armaord 1.0.9
-            - Bug fixes.
-            - Error exceptions.
-            - Polished code.
-            * plotint 0.2
-            - Error control.
-            - Increased marks.
-            * armaint 1.3.8
-            - Improved consistency check to avoid that the extrapolations explode using the standard deviation of the differences.
+23-jul-20   * MIARMA 0.0.0.1
+	    - This is a transition version where the code is cleaned in order to facilitate the posterior translation to R language.
+	    - Removed input files
+            - Removed all references to CoRoT
+            - Removed cellfind calls
+            - Removed version control
