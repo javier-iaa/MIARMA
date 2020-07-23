@@ -1,34 +1,35 @@
-function strout = MIARMA(varargin)
-% function strout = MIARMA(varargin) 
+function strout = MIARMA(strin)
+% function strout = MIARMA(strin) 
 % interpolates datapoints in a gapped time series using ARMA models to
 % predict the segments of data.
 % Inputs:   
-%           MIARMA( strdata )
-%            where strdata is a struct that contains the necessary inputs:
-%             time, data, stat
-%            and a set of optional parameters:
-%             igap - is the gap indexes array
-%             aka - is the Akaike coefficient matrix
-%             temp - boolean, 1 to save temp files 0 otherwise
-%             params - a struct that contain constant parameters simpl,
-%              temp, facmin, facmax, npi, npz, repmax, pmin, pmax, mseg, 
-%              nuc, and always_int. 
-%             Consult the documentation for a detailed description of each 
-%             of these parameters.
+%           MIARMA( strin )
+%            where strin is a struct that contains the necessary inputs:
+%               time, data, stat
+%
+%            and a set of optional inputs:
+%               igap - is the gap indexes array
+%               aka - is the Akaike coefficient matrix
+%               temp - boolean, 1 to save temp files 0 otherwise
+%
+%            and parameters in the struct params that contains the fields:
+%                temp, facmin, facmax, npi, npz, repmax, pmin, pmax, mseg, 
+%                nuc, and always_int. 
+%
+%            Consult the documentation for a detailed description of each 
+%            of these parameters.
 %
 % Outputs:  If no output variable is given an ASCII file is created 
 %           containing the output data and the corresponding time and
 %           status
 %
-%           For test purposes any of theses calls are available:
-%           strout = MIARMA( filename )
-%           which is the output structure. It might contains timeout,
-%            datout, statout    
+%           The output structure contains timeout, datout, statout
 %           and also the following variables:
-%            aka - Akaike coefficient matrix
-%            ord - optimal order (p,q)
-%            igap - gap indexes
-%            params - a complete list of parameters used for computation
+%
+%              aka - Akaike coefficient matrix
+%              ord - optimal order (p,q)
+%              igap - gap indexes
+%              params - a complete list of parameters used for computation
 %
 % Note:  All gaps must be correctly flagged for the gap-filling algorithm 
 % to give an adequate output.
@@ -47,11 +48,15 @@ function strout = MIARMA(varargin)
 %                   armaint.m       
 %                   pred.m          
 %
-% Version: x.5.13.1
+% Version: 0.0.0.1
 %
 % Changes: 
 % - This is a transition version where the code is cleaned in order to 
 % facilitate the posterior translation to R language.
+% - Removed input files
+% - Removed all references to CoRoT
+% - Removed cellfind calls
+% - Removed version control
 %
 % Date: 23/07/2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -59,31 +64,24 @@ function strout = MIARMA(varargin)
 warning off all
 
 %% Some definitions
-version = 'x.5.13.1';
+numvers = '0.0.0.1';
 
 lgaps0 = NaN;
 Llin = NaN;
 
-% Call definition of cellfind function
-cellfind = @(string)(@(cell_contents)(strcmp(string,cell_contents)));
-
-% fprintf('Warning: All gaps must be correctly flagged for the gap-filling\n')
-% fprintf('algorithm to give an adequate output\n\n');
-
 % Header
 fprintf('\n #############################################################\n');
 fprintf(' #                                                           #\n');
-fprintf(' #                    MIARMA   %s                      #\n', version);
+fprintf(' #                    MIARMA  %s                        #\n', numvers);
 fprintf(' #    by  J.Pascual-Granado, IAA-CSIC, Spain. 2020           #\n');
 fprintf(' #               License GNU GPL v3.0                        #\n');
 fprintf(' #                                                           #\n');
 fprintf(' #############################################################\n\n');
 
 %% Input data
-strdata = varargin{1};
-timein = strdata.time;
-datin = strdata.data;
-flagin = strdata.stat;
+timein = strin.time;
+datin = strin.data;
+flagin = strin.stat;
 
 L = length(datin);
 
@@ -92,199 +90,106 @@ datout = datin;
 timeout = timein;
 
 %% Parameters
-% Optional input file which contains a list of parameters
-if (nargin == 2 && ischar(varargin{2}))
-    parname = varargin{2};
-    pardata = importdata(parname);
 
-    % Flag to activate (or not) ascii output
-    pari = strcmp(pardata.textdata,'ascii');
-    pari = circshift(pari,-2);
-    if ~isempty(pardata.data(pari))
-        ascii_struct = pardata.data(pari);
-    end
-    
+% default values
+simpl = true;
+temp = false;
+always_int = true;
+nuc = 1;
+mseg = 1000;
+pmin = 2;
+pmax = 30;
+repmax = 3;
+npz = 36;
+npi = 4;
+facmax = 6;
+facmin = 4;
+ascii_struct = false;
+
+if isfield( strin, 'params' )
+        
     % Flag to decide between af_simp.m and armafill.m
-    pari = strcmp(pardata.textdata,'simpl');
-    pari = circshift(pari,-2);
-    if ~isempty(pardata.data(pari))
-        simpl = pardata.data(pari);
+    if isfield( strin.params, 'simpl')
+        simpl = strin.params.simpl;
     end
 
     % Default values of the parameters.
     % Min. ratio between segment length and number of parameters for
     % the model. facmin must be >= 3
-    pari = strcmp(pardata.textdata,'facmin');
-    pari = circshift(pari,-2);
-    if ~isempty(pardata.data(pari))
-        facmin = pardata.data(pari);
+    if isfield( strin.params, 'facmin')
+        facmin = strin.params.facmin;
     end
 
     % Max. ratio between segment length and number of parameters for
     % the model. facmax = 6;
-    pari = strcmp(pardata.textdata,'facmax');
-    pari = circshift(pari,-2);
-    if ~isempty(pardata.data(pari))
-        facmax = pardata.data(pari);
+    if isfield( strin.params ,'facmax')
+        facmax = strin.params.facmax;
     end
 
     % Lower limit in gap length for the ARMA interpolation
     % (below this limit linear interpolation is used)
-    pari = strcmp(pardata.textdata,'npi');
-    pari = circshift(pari,-2);
-    if ~isempty(pardata.data(pari))
-        npi = pardata.data(pari);
+    if isfield( strin.params, 'npi')
+        npi = strin.params.npi;
     end
-
+    
     % Lower limit in data segment length for the ARMA interpolation.
     % This must be at least d*facmin and, as min(d)=min(p+q)=pmin+0,
     % npz must be at least pmin*facmin
-    pari = strcmp(pardata.textdata,'npz');
-    pari = circshift(pari,-2);
-    if ~isempty(pardata.data(pari))
-        npz = pardata.data(pari);
+    if isfield( strin.params, 'npz' )
+        npz = strin.params.npz;
+    end
+    
+    % Number of iterations of the gap-filling loop
+    if isfield( strin.params, 'repmax')
+        repmax = strin.params.repmax;
     end
 
-    % Number of iterations of the gap-filling loop
-    pari = strcmp(pardata.textdata,'repmax');
-    pari = circshift(pari,-2);
-    if ~isempty(pardata.data(pari))
-        repmax = pardata.data(pari);
-    end
-    
-    % Maximum length of the segment used to calculate ARMA order
-    pari = strcmp(pardata.textdata,'mseg');
-    pari = circshift(pari,-2);
-    if ~isempty(pardata.data(pari))
-        mseg = pardata.data(pari);
-    end
-    
     % Range for the search of the optimal ARMA orders [pmin,pmax] 
     % The MA order is search in the range [0,p]
-    pari = strcmp(pardata.textdata,'pmin');
-    pari = circshift(pari,-2);
-    if ~isempty(pardata.data(pari))
-        pmin = pardata.data(pari);
-    end
-    pari = strcmp(pardata.textdata,'pmax');
-    pari = circshift(pari,-2);
-    if ~isempty(pardata.data(pari))
-        pmax = pardata.data(pari);
+    if isfield( strin.params, 'pmin')
+        pmin = strin.params.pmin;
     end
 
+    if isfield( strin.params, 'pmax')
+        pmax = strin.params.pmax;
+    end
+
+    % Maximum length of the segment used to calculate ARMA order
+    if isfield( strin.params, 'mseg')
+        mseg = strin.params.mseg;
+    end    
+    
     % Number of workers to used for parallelization. Default is 1 meaning
     % no parallelization.
-    % The max number of workers permitted in the standard version of Matlab 
-    % is 12, therefore, nuc should be less than 12 if MIARMA is not running
-    % under Matlab Distributed Computing.
-    pari = strcmp(pardata.textdata,'nuc');
-    pari = circshift(pari,-2);
-    if ~isempty(pardata.data(pari))
-        nuc = pardata.data(pari); 
+    if isfield( strin.params, 'nuc' )
+        nuc = strin.params.nuc;
+    else
+        nuc = 1;
     end
-    
+
     % Always interpolate or not
-    pari = strcmp(pardata.textdata,'always_int');
-    pari = circshift(pari,-2);
-    if ~isempty(pardata.data(pari))
-        always_int = pardata.data(pari);
+    if isfield( strin.params, 'always_int' )
+        always_int = strin.params.always_int;
     end
 
     % Decides wheter to save the Akaike matrix at a temp file
-    pari = strcmp(pardata.textdata,'temp');
-    pari = circshift(pari,-2);
-    if ~isempty(pardata.data(pari))
-        temp = pardata.data(pari);
+    if isfield( strin.params, 'temp' )
+        temp = strin.params.temp;
     end
-    
-    % Full name for the file containing the Akaike matrix
-    pari = strcmp(pardata.textdata,'akaname');
-    pari = circshift(pari,-2);
-    if ~isempty(pardata.data(pari))
-        akaname = pardata.data(pari);
+        
+    % Flag to activate (or not) ascii output with parameters and other info
+    if isfield(strin.params, 'ascii_struct')
+        ascii_struct = strin.params.ascii_struct;
     end
-    
-else
-    % default values
-    simpl = true;
-    temp = false;
-    always_int = true;
-    nuc = 1;
-    mseg = 1000;
-    pmin = 2;
-    pmax = 30;
-    repmax = 3;
-    npz = 36;
-    npi = 4;
-    facmax = 6;
-    facmin = 4;
-    ascii_struct = false;
 
-    if isfield( strdata, 'params' )
-        
-        if isfield( strdata.params, 'simpl')
-            simpl = strdata.params.simpl;
-        end
-
-        if isfield( strdata.params, 'facmin')
-            facmin = strdata.params.facmin;
-        end
-
-        if isfield( strdata.params ,'facmax')
-            facmax = strdata.params.facmax;
-        end
-    
-        if isfield( strdata.params, 'npi')
-            npi = strdata.params.npi;
-        end
-    
-        if isfield( strdata.params, 'npz' )
-            npz = strdata.params.npz;
-        end
-    
-        if isfield( strdata.params, 'repmax')
-            repmax = strdata.params.repmax;
-        end
-
-        if isfield( strdata.params, 'pmin')
-            pmin = strdata.params.pmin;
-        end
-
-        if isfield( strdata.params, 'pmax')
-            pmax = strdata.params.pmax;
-        end
-
-        if isfield( strdata.params, 'mseg')
-            mseg = strdata.params.mseg;
-        end    
-    
-        if isfield( strdata.params, 'nuc' )
-            nuc = strdata.params.nuc;
-        else
-            nuc = 1;
-        end
-
-        if isfield( strdata.params, 'always_int' )
-            always_int = strdata.params.always_int;
-        end
-
-        if isfield( strdata.params, 'temp' )
-            temp = strdata.params.temp;
-        end
-        
-        if isfield(strdata.params, 'ascii_struct')
-            ascii_struct = strdata.params.ascii_struct;
-        end
-        
-        if isfield(strdata.params, 'akaname')
-            akaname = strdata.params.akaname;
-        end
-        
+    % Full name for the file containing the Akaike matrix        
+    if isfield(strin.params, 'akaname')
+        akaname = strin.params.akaname;
     end
-    
+        
 end
 
-% Save parameters used in the computation for transparency
+% Save parameters used in the computation in output structure for transparency
 strout.params.simpl = simpl;
 strout.params.temp = temp;
 strout.params.always_int = always_int;
@@ -304,32 +209,12 @@ strout.params.ascii_struct = ascii_struct;
 % params = [facmin facmax npi pmin rstd];
 params = [facmin facmax npi pmin];
 
-% Other optional parameters
-if isfield( strdata, 'igap')
-    % Indexes given as input
-    igap = strdata.igap;
-end
-
-if isfield( strdata, 'aka')
-    % Akaike coefficient matrix given as input
-    aka = strdata.aka;
-end
-
 %% Building the gap indexes
-% Apply cellfind to each cell of cell array varargin
-if isempty(find(cellfun(cellfind('igap'),varargin),1))
-    % First step: valid data is flagged zero
-    % This is for CoRoT data only 
-    if strcmp(field,'exo')
-        flagin(flagin==8 | flagin==16 | flagin==64 | flagin==128 | ...
-        flagin==24 | flagin==72 | flagin==136 | flagin==80 | ...
-        flagin==144 | flagin==192 | flagin==88 | flagin==200 | ...
-        flagin==152 | flagin==208) = 0;    
-    elseif strcmp(field,'sismo')
-        flagin(flagin==64 | flagin==256 | flagin==512 | flagin==320 | ...
-        flagin==578) = 0;
-    end
-        
+if isfield(strin, 'igap')
+    % Indexes given as input
+    igap = strin.igap;
+
+else        
     % Gap indexes are calculated
     fprintf('Step 1 - Finding gap indexes\n');
     igap = indgap(flagin);
@@ -353,7 +238,6 @@ if isempty(find(cellfun(cellfind('igap'),varargin),1))
     % Correction of the status array for small gaps
     if npi > 1
         fprintf('Step 1b - Correction of status array for small gaps\n');
-%         [datout,flagin] = lincorr(datin,flagin,igap,npi,rstd);
         [datout, flagin] = lincorr(datin, flagin, igap, npi);
     end
 
@@ -389,28 +273,23 @@ if isempty(find(cellfun(cellfind('igap'),varargin),1))
         flagout = flagin;
 
         if ascii_struct
-%             L = length(datout);
             Llin = length(find(flagout~=0));
-            if exist('filename','var')
-                fout = cat(2,filename(1:end-4),'.agfs');
-            else
-                fout = 'curve.agfs';
-            end
+            fout = 'output.agfs';
             fich = fopen(fout,'w');
     
-            fprintf(fich,'# code: MIARMA\n');
-            fprintf(fich,'# version: %s\n',version);
-            fprintf(fich,'# model (p,q): not calculated\n');
-            fprintf(fich,'# length: %d\n',L);
-            fprintf(fich,'# gaps_arma: 0\n');
-            fprintf(fich,'# gaps_linear: %d\n',Llin);
-            fprintf(fich,'# facmin: %d\n',facmin);
-            fprintf(fich,'# facmax: %d\n',facmax);
-            fprintf(fich,'# npi: %d\n',npi);
-            fprintf(fich,'# npz: %d\n',npz);
-            fprintf(fich,'# niter: %d\n',repmax);
-            fprintf(fich,'# mseg: %d\n',mseg);
-            fprintf(fich,'x y z\n');
+            fprintf(fich, '# code: MIARMA\n');
+            fprintf(fich, '# version: %s\n', numvers);
+            fprintf(fich, '# model (p,q): not calculated\n');
+            fprintf(fich, '# length: %d\n', L);
+            fprintf(fich, '# gaps_arma: 0\n');
+            fprintf(fich, '# gaps_linear: %d\n', Llin);
+            fprintf(fich, '# facmin: %d\n', facmin);
+            fprintf(fich, '# facmax: %d\n', facmax);
+            fprintf(fich, '# npi: %d\n', npi);
+            fprintf(fich, '# npz: %d\n', npz);
+            fprintf(fich, '# niter: %d\n', repmax);
+            fprintf(fich, '# mseg: %d\n', mseg);
+            fprintf(fich, 'x y z\n');
    
             for i=1:L
                 fprintf(fich,'%16.12f %16.13f %d\n',...
@@ -430,7 +309,11 @@ end
 strout.igap = igap;
 
 %% Search for the optimal order (p,q)
-if isempty(find(cellfun(cellfind('aka'),varargin),1))
+if isfield( strin, 'aka')
+    % Akaike coefficient matrix given as input
+    aka = strin.aka;
+    
+else
     % This gives the length of the largest segment without gaps
     segl = [igap(1)-1 (igap(3:2:end-1)-igap(2:2:end-2)-1) L-igap(end)];
     ML = max(segl);
@@ -452,7 +335,7 @@ if isempty(find(cellfun(cellfind('aka'),varargin),1))
         seg = seg(1:mseg);
     end
     
-    fprintf('Step 4 - Order estimation\nPlease wait...\n');
+    fprintf('Step 4 - Order estimation\n\nPlease wait...\n');
     
     % Optimal order (p,q) for the ARMA model of seg
     pminstr = num2str(pmin,'%03.f');
@@ -472,26 +355,9 @@ if isempty(find(cellfun(cellfind('aka'),varargin),1))
         end
         
     else
-
-        % Open a pool for parallel computation with nuc workers.
-        
-        % Version control
-        rel = version;
-        rnuml = rel(end-5:end-1);
-        rnum = rnuml(1:end-1);
-        num = str2double( rnum );
-        
-        if num > 2013 || strcmp(rnuml, '2013b')
-            parpool(nuc);
-        else
-            matlabpool(nuc);
-        end
-
-    %     if exist('filename','var'),
-    %         aka = armaord_par(seg,'pmin',pmin,'pmax',pmax,'w',filename(1:end-4));
-    %     else
-             aka = armaord_par(seg,'pmin',pmin,'pmax',pmax);
-    %     end
+        % Open a pool for parallel computation with nuc workers.       
+        matlabpool(nuc);
+        aka = armaord_par(seg, 'pmin', pmin, 'pmax', pmax);
     end
 end
 
@@ -504,12 +370,12 @@ fprintf('\nOptimal order: [%d %d]\n\n', p, q);
 
 % Outputs: gap indexes and Akaike coefficient matrix
 if ~ascii_struct
-        strout.aka = aka;
-        strout.igap = igap;
-        strout.timeout = timeout;
-        strout.datout = datout;
-        strout.statout = flagin;
-        strout.ord = [p q];
+    strout.aka = aka;
+    strout.igap = igap;
+    strout.timeout = timeout;
+    strout.datout = datout;
+    strout.statout = flagin;
+    strout.ord = [p q];
 end
 
 %% ARMA filling iterations
@@ -641,17 +507,14 @@ if ~ascii_struct
     strout.timeout = timeout;
     strout.datout = datout;
     strout.statout = flagout;
+    
 else
     % This is the situation in a standard call
-    if exist('filename','var')
-        fout = cat(2,filename(1:end-4),'.agfs');
-    else
-        fout = 'curve.agfs';
-    end
+    fout = 'output.agfs';
     fich = fopen(fout,'w');
     
     fprintf(fich,'# code: MIARMA\n');
-    fprintf(fich,'# version: %s\n',version);
+    fprintf(fich,'# version: %s\n', numvers);
     fprintf(fich,'# model (p,q): %d %d\n',p,q);
     fprintf(fich,'# length: %d\n',L);
     fprintf(fich,'# gaps_arma: %d\n',lgaps0-Llin);
