@@ -22,14 +22,14 @@ function [datout,flagout] = af_simp(datin, flagin, aka, ind1, params, varargin)
 %
 % Calls:   armaint.m
 %
-% Version: 0.1.9
+% Version: 0.2.0
 %
 % Changes from the last version: 
-% - Minor fixes.
+% - Data points taken out with sing are no longer recovered.
 % 
 % Author: Javier Pascual-Granado
 %
-% Date: 24/06/2020
+% Date: 17/09/2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 L = length(datin);
@@ -290,14 +290,14 @@ while ind1f>=0,
     end
         
     % Recover data points that were taken out with sing
-    reco0 = find(flagin(ind1(1):ind1(2))==-1);
-    reco = ind1(1) - 1 + reco0;
-
-    if ~isempty(reco) && go
-        % Fix local trends that might be not modeled properly introducing jumps
-        datout = locdetrend(datout, datin, reco, reco0, seg1, seg2, interp, npint, np, ind1);
-        datout(reco) = datin(reco);
-    end
+%     reco0 = find(flagin(ind1(1):ind1(2))==-1);
+%     reco = ind1(1) - 1 + reco0;
+% 
+%     if ~isempty(reco) && go
+%         % Fix local trends that might be not modeled properly introducing jumps
+%         datout = locdetrend(datout, datin, reco, reco0, seg1, seg2, interp, npint, np, ind1);
+%         datout(reco) = datin(reco);
+%     end
     
     ind1(1:2)=[];
     
