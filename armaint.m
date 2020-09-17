@@ -1,23 +1,22 @@
-function [interp, go] = armaint(seg1, seg3, ord, N2)
-% function [interp,go] = armaint(seg1, seg3, ord, N2) interpolates N2
-% data points between the segments seg1 and seg3 using ARMA models.
+function [interp, go] = armaint(seg1, seg2, ord, N2)
+% function [interp,go] = armaint(seg1, seg2, ord, N2) interpolates N2
+% data points between the segments seg1 and seg2 using ARMA models.
 % To generate the output segment interp a triangular weight is used for
 % both segments.
 % Inputs:       seg1 - left data segment
-%               seg3 - right data segment
+%               seg2 - right data segment
 %               ord - ARMA (p,q) orders
 %               N2 - length of the gap
 % Outputs:      interp - interpolated segment
 %               go - true when the interpolation works and false otherwise
-
-% Version: 1.3.8
+% Version: 1.3.9
 % Changes from the last version:
-% Improved consistency check to avoid that the extrapolations explode using
-% the standard deviation of the differences.
+% - Removed version control
+% - Minor improvements.
 %
 %  Calls: sigma_clip.m
 %  Author(s): Javier Pascual-Granado
-%  Date: 20/05/2020
+%  Date: 17/09/2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 go = true;
@@ -70,22 +69,9 @@ myalg.Advanced.Threshold.AutoInitialState = 1.05; %  Specifies when to automatic
 % to the norm with an estimated initial state exceeds AutoInitialState. 
 % Default is 1.05.
 
-%% Version control
-% Three different versions are available: old, new and default (nothing is
-% done).
-rel = version;
-rel = str2double(rel(end-5:end-2));
-modo = 'default';
-
-if rel < 2012
-    modo = 'old';
-elseif rel >= 2015
-    modo = 'new';
-end
-
 %% Preparing data
 % Stationarity is assumed
-sigma = std([seg1; seg3]);
+sigma = std([seg1; seg2]);
 if isinf(sigma)==1
     fprintf('Infinite deviation error\n');
     interp = NaN(1,N2);
@@ -94,15 +80,15 @@ if isinf(sigma)==1
 end
 
 % Change row vectors into column vectors
-if ~isempty(find(isnan(seg3),1))
+if ~isempty(find(isnan(seg2),1))
     [fil,~] = size(seg1);
     if fil==1
         seg1 = seg1';
     end
 elseif ~isempty(find(isnan(seg1),1))
-    [fil,~] = size(seg3);
+    [fil,~] = size(seg2);
     if fil==1
-        seg3 = seg3';
+        seg2 = seg2';
     end
 end
 
@@ -111,53 +97,25 @@ wp = 1/(N2+1);
 w = (wp:wp:(1-wp));
 
 %% Forward predictor: ARMA approach using an iterative algorithm
-if ~isempty(find(isnan(seg3),1))
+if ~isempty(find(isnan(seg2),1))
     sig_s1 = std(seg1);
     
     % Normalization
     seg1n = (seg1-mean(seg1))./sig_s1;
 
-    if strcmp(modo, 'old')
-        % Calculate ARMA model and obtain the coeff. for the left segment
-        try
-            model1 = armax(seg1n,ord,'alg',myalg);
-        catch E
-            go = false;
-            msg = getReport(E);
-            return
-        end
-        ts = 1;
-        data1 = iddata(seg1n(1:end-1),[],ts);
-        yfor = pred(model1,data1,N2+1,'e');
-        yfor = yfor.y;
-        
-    elseif strcmp(modo, 'new')
-        % Set the options
-        opt = armaxOptions;
-        opt.Advanced.ErrorThreshold = 1.6; % put zero here if no outliers
-        opt.Display = 'off';
-        % Then fit the model
-        try
-            model1 = armax(seg1n, ord, opt);
-        catch E
-            msg = getReport(E);
-            go = false;
-            return
-        end
-        yfor = forecast(model1,seg1n(1:end-1),N2+1);
-        
-    else
-       % Calculate ARMA model and obtain the coeff. for the left segment
-        try
-            model1 = armax(seg1n, ord,'alg',myalg);
-        catch E
-            msg = getReport(E);
-            go = false;
-            return;
-        end
-        yfor = forecast(model1, seg1n(1:end-1), N2+1);
+    % Calculate ARMA model and obtain the coeff. for the left segment
+    try
+        model1 = armax(seg1n,ord,'alg',myalg);
+    catch E
+        go = false;
+        msg = getReport(E);
+        return
     end
-
+    ts = 1;
+    data1 = iddata(seg1n(1:end-1),[],ts);
+    yfor = pred(model1,data1,N2+1,'e');
+    yfor = yfor.y;
+        
     % Estimation of residuals
     e1 = resid(model1, data1);
     rstd1 = std(e1.OutputData);
@@ -175,46 +133,18 @@ if ~isempty(find(isnan(seg3),1))
         seg1n = (seg1-mean(seg1))./std(seg1);
         sig_s1 = std(seg1);
 
-        if strcmp(modo,'old')
-            % Calculate ARMA model and obtain the coeff. for the left segment
-            try
-                model1 = armax(seg1n,ord,'alg',myalg);
-            catch E
-                msg = getReport(E);
-                go = false;
-                return
-            end
-            data1 = iddata(seg1n(1:end-1),[],ts);
-            yfor = pred(model1,data1,N2+1,'e');
-            yfor = yfor.y;
-            
-        elseif strcmp(modo,'new')
-            % Set the options
-            opt = armaxOptions;
-            opt.Advanced.ErrorThreshold = 1.6; % put zero here if no outliers
-            opt.Display = 'off';
-            % Then fit the model
-            try
-                model1 = armax(seg1n, ord, opt);
-            catch E
-                msg = getReport(E);
-                go = false;
-                return
-            end
-            yfor = forecast(model1,seg1n(1:end-1),N2+1);
-            
-        else
-            % Calculate ARMA model and obtain the coeff. for the left segment
-            try
-                model1 = armax(seg1n,ord,'alg',myalg);
-            catch E
-                msg = getReport(E);
-                go = false;
-                return
-            end
-            yfor = forecast(model1,seg1n(1:end-1),N2+1); 
+        % Calculate ARMA model and obtain the coeff. for the left segment
+        try
+            model1 = armax(seg1n,ord,'alg',myalg);
+        catch E
+            msg = getReport(E);
+            go = false;
+            return
         end
-
+        data1 = iddata(seg1n(1:end-1),[],ts);
+        yfor = pred(model1,data1,N2+1,'e');
+        yfor = yfor.y;
+            
         % Estimation of residuals
         e1 = resid(model1, data1);
         rstd1 = std(e1.OutputData);
@@ -234,62 +164,33 @@ if ~isempty(find(isnan(seg3),1))
     interp = yfor(2:end);
     return
 end
+
 %% Backward predictor: ARMA approach using an iterative algorithm
 if ~isempty(find(isnan(seg1),1))
-    sig_s3 = std(seg3);
+    sig_s2 = std(seg2);
     
     % Normalization
-    seg3n = (seg3-mean(seg3))./sig_s3;
+    seg2n = (seg2-mean(seg2))./sig_s2;
 
-    if strcmp(modo, 'old')
-        % Calculate ARMA model and obtain the coeff. for the right segment
-        try
-            model2 = armax(flipud(seg3n), ord,'alg',myalg);
-        catch E
-            msg = getReport(E);
-            go = false;
-            return
-        end
-        ts = 1;
-        data2 = iddata(flipud(seg3n(2:end)),[],ts);
-        yback = pred(model2,data2,N2+1,'e');
-        yback = yback.y;
-        
-    elseif strcmp(modo, 'new')
-        % Set the options
-        opt = armaxOptions;
-        opt.Advanced.ErrorThreshold = 1.6; % put zero here if no outliers
-        opt.Display = 'off';
-        % Then fit the model
-        try
-            model2 = armax(flipud(seg3n), ord, opt);
-        catch E
-            msg = getReport(E);
-            go = false;
-            return
-        end
-        yback = forecast(model2, flipud(seg3n(2:end)), N2+1);
-
-    else
-        
-        % Calculate ARMA model and obtain the coeffs for the right segment
-        try
-            model2 = armax(flipud(seg3n),ord,'alg',myalg);
-        catch E
-            msg = getReport(E);
-            go = false;
-            return
-        end
-        yback = forecast(model2,flipud(seg3n(2:end)),N2+1);
+    % Calculate ARMA model and obtain the coeff. for the right segment
+    try
+        model2 = armax(flipud(seg2n), ord,'alg',myalg);
+    catch E
+        msg = getReport(E);
+        go = false;
+        return
     end
-
+    ts = 1;
+    data2 = iddata(flipud(seg2n(2:end)),[],ts);
+    yback = pred(model2,data2,N2+1,'e');
+    yback = yback.y;
     yback = flipud(yback);
 
     % Estimation of residuals
     e2 = resid(model2, data2);
     rstd2 = std(e2.OutputData);
     r2 = rstd2*randn(size(yback));
-    yback = ( (yback + r2).*sig_s3 + mean(seg3) );
+    yback = ( (yback + r2).*sig_s2 + mean(seg2) );
 
 % Validation with sigma clipping
 % This code can produce bugs and should be used with care and only when
@@ -297,63 +198,34 @@ if ~isempty(find(isnan(seg1),1))
     
     sig_yb = std(yback);
 
-    if sig_yb > fac_sig*sig_s3
-        seg3 = sigma_clip(seg3,2);
-        seg3n = (seg3-mean(seg3))./std(seg3);
-        sig_s3 = std(seg3);
+    if sig_yb > fac_sig*sig_s2
+        seg2 = sigma_clip(seg2,2);
+        seg2n = (seg2-mean(seg2))./std(seg2);
+        sig_s2 = std(seg2);
 
-        if strcmp(modo, 'old')
-            % Calculate ARMA model and obtain the coeff. for the right segment
-            try
-                model2 = armax(flipud(seg3n), ord,'alg',myalg);
-            catch E
-                msg = getReport(E);
-                go = false;
-                return
-            end
-            ts = 1;
-            data2 = iddata(flipud(seg3n(2:end)),[],ts);
-            yback = pred(model2,data2,N2+1,'e');
-            yback = yback.y;
-
-        elseif strcmp(modo, 'new')
-            % Set the options
-            opt = armaxOptions;
-            opt.Advanced.ErrorThreshold = 1.6; % put zero here if no outliers
-            opt.Display = 'off';
-            % Then fit the model
-            try
-                model2 = armax(flipud(seg3n), ord, opt);
-            catch E
-                msg = getReport(E);
-                go = false;
-                return
-            end
-            yback = forecast(model2, flipud(seg3n(2:end)), N2+1);
-
-        else
-            % Calculate ARMA model and obtain the coeffs for the right segment
-            try
-                model2 = armax(flipud(seg3n),ord,'alg',myalg);
-            catch E
-                msg = getReport(E);
-                go = false;
-                return
-            end
-            yback = forecast(model2,flipud(seg3n(2:end)),N2+1);
+        % Calculate ARMA model and obtain the coeff. for the right segment
+        try
+            model2 = armax(flipud(seg2n), ord,'alg',myalg);
+        catch E
+            msg = getReport(E);
+            go = false;
+            return
         end
-
+        ts = 1;
+        data2 = iddata(flipud(seg2n(2:end)),[],ts);
+        yback = pred(model2,data2,N2+1,'e');
+        yback = yback.y;
         yback = flipud(yback);
         
         % Estimation of residuals
         e2 = resid(model2, data2);
         rstd2 = std(e2.OutputData);
         r2 = rstd2*randn(size(yback));
-        yback = ( (yback + r2).*sig_s3 + mean(seg3) );
+        yback = ( (yback + r2).*sig_s2 + mean(seg2) );
         
         sig_yb = std(yback);
 
-        if sig_yb > fac_sig*sig_s3
+        if sig_yb > fac_sig*sig_s2
             interp = NaN(1,N2);
             go = false;
             return
@@ -368,15 +240,69 @@ end
 %% Forward-Backward predictor: ARMA approach using an iterative algorithm
 % Normalization
 sig_s1 = std(seg1);
-sig_s3 = std(seg3);
+sig_s2 = std(seg2);
 seg1n = (seg1-mean(seg1))./sig_s1;
-seg3n = (seg3-mean(seg3))./sig_s3;
+seg2n = (seg2-mean(seg2))./sig_s2;
 
 % Calculate ARMA model, obtain the coefficients and validate 
 % forecasted data through a 2-sigma criterion
 
 % Forward extrapolation
-if strcmp(modo, 'old')
+% Calculate ARMA model and obtain the coeff. for the left segment
+try
+    model1 = armax(seg1n,ord,'alg',myalg);
+catch E
+    msg = getReport(E);
+    go = false;
+    return
+end
+ts = 1;
+data1 = iddata(seg1n(1:end-1),[],ts);
+yfor = pred(model1,data1,N2+1,'e');
+%     yfor = pred(model1,data1,N2,'e');
+yfor = yfor.y;
+
+% Backward extrapolation
+
+% Calculate ARMA model and obtain the coeff. for the right segment
+try
+    model2 = armax(flipud(seg2n), ord,'alg',myalg);
+catch E
+    msg = getReport(E);
+    go = false;
+    return
+end
+ts = 1;
+data2 = iddata(flipud(seg2n(2:end)),[],ts);
+yback = pred(model2,data2,N2+1,'e');
+%     yback = pred(model2,data2,N2,'e');
+yback = yback.y;
+yback = flipud(yback);
+
+% Estimation of residuals
+e1 = resid(model1, data1);
+rstd1 = std(e1.OutputData);
+r1 = rstd1*randn(size(yfor));
+yfor = ( (yfor + r1).*sig_s1 + mean(seg1) );
+e2 = resid(model2, data2);
+rstd2 = std(e2.OutputData);
+r2 = rstd2*randn(size(yback));
+yback = ( (yback + r2).*sig_s2 + mean(seg2) );
+
+% Validation with sigma clipping
+% This code should be used with care when the extrapolations are unstable.
+
+% The sigma of the differences shows better when the extrapolation explodes
+sigd_yf = std(diff(yfor));
+sigd_s1 = std(diff(seg1));
+sigd_s2 = std(diff(seg2));
+
+if sigd_yf > fac_sig*sigd_s1 && sigd_yf > fac_sig*sigd_s2
+    
+    seg1 = sigma_clip(seg1, 2);
+    seg1n = (seg1-mean(seg1))./std(seg1);
+    sig_s1 = std(seg1);
+    
     % Calculate ARMA model and obtain the coeff. for the left segment
     try
         model1 = armax(seg1n,ord,'alg',myalg);
@@ -388,147 +314,9 @@ if strcmp(modo, 'old')
     ts = 1;
     data1 = iddata(seg1n(1:end-1),[],ts);
     yfor = pred(model1,data1,N2+1,'e');
-%     yfor = pred(model1,data1,N2,'e');
-    yfor = yfor.y;
-
-elseif strcmp(modo, 'new')
-    % Set the options
-    opt = armaxOptions;
-    opt.Advanced.ErrorThreshold = 1.6; % put zero here if no outliers
-    opt.Display = 'off';
-    % Then fit the model
-    try
-        model1 = armax(seg1n, ord, opt);
-    catch E
-        msg = getReport(E);
-        go = false;
-        return
-    end
-    yfor = forecast(model1,seg1n(1:end-1),N2+1);
-
-else
-   % Calculate ARMA model and obtain the coeff. for the left segment
-    try
-        model1 = armax(seg1n, ord,'alg',myalg);
-    catch E
-        msg = getReport(E);
-        go = false;
-        return
-    end
-    yfor = forecast(model1, seg1n(1:end-1), N2+1);
-end
-
-% Backward extrapolation
-if strcmp(modo, 'old')
-    % Calculate ARMA model and obtain the coeff. for the right segment
-    try
-        model2 = armax(flipud(seg3n), ord,'alg',myalg);
-    catch E
-        msg = getReport(E);
-        go = false;
-        return
-    end
-    ts = 1;
-    data2 = iddata(flipud(seg3n(2:end)),[],ts);
-    yback = pred(model2,data2,N2+1,'e');
-%     yback = pred(model2,data2,N2,'e');
-    yback = yback.y;
-
-elseif strcmp(modo, 'new')
-    % Set the options
-    opt = armaxOptions;
-    opt.Advanced.ErrorThreshold = 1.6; % put zero here if no outliers
-    opt.Display = 'off';
-    % Then fit the model
-    try
-        model2 = armax(flipud(seg3n), ord, opt);
-    catch E
-        msg = getReport(E);
-        go = false;
-        return
-    end
-    yback = forecast(model2, flipud(seg3n(2:end)), N2+1);
-
-else
-    % Calculate ARMA model and obtain the coeffs for the right segment
-    try
-        model2 = armax(flipud(seg3n),ord,'alg',myalg);
-    catch E
-        msg = getReport(E);
-        go = false;
-        return
-    end
-    yback = forecast(model2,flipud(seg3n(2:end)),N2+1);
-end
-
-yback = flipud(yback);
-
-% Estimation of residuals
-e1 = resid(model1, data1);
-rstd1 = std(e1.OutputData);
-r1 = rstd1*randn(size(yfor));
-yfor = ( (yfor + r1).*sig_s1 + mean(seg1) );
-e2 = resid(model2, data2);
-rstd2 = std(e2.OutputData);
-r2 = rstd2*randn(size(yback));
-yback = ( (yback + r2).*sig_s3 + mean(seg3) );
-
-% Validation with sigma clipping
-% This code should be used with care when the extrapolations are unstable.
-
-% The sigma of the differences shows better when the extrapolation explodes
-sigd_yf = std(diff(yfor));
-sigd_s1 = std(diff(seg1));
-sigd_s3 = std(diff(seg3));
-
-if sigd_yf > fac_sig*sigd_s1 && sigd_yf > fac_sig*sigd_s3
-    
-    seg1 = sigma_clip(seg1, 2);
-    seg1n = (seg1-mean(seg1))./std(seg1);
-    sig_s1 = std(seg1);
-    
-    if strcmp(modo, 'old')
-        % Calculate ARMA model and obtain the coeff. for the left segment
-        try
-            model1 = armax(seg1n,ord,'alg',myalg);
-        catch E
-            msg = getReport(E);
-            go = false;
-            return
-        end
-        ts = 1;
-        data1 = iddata(seg1n(1:end-1),[],ts);
-        yfor = pred(model1,data1,N2+1,'e');
 %         yfor = pred(model1,data1,N2,'e');
-        yfor = yfor.y;
-        
-    elseif strcmp(modo, 'new')
-        % Set the options
-        opt = armaxOptions;
-        opt.Advanced.ErrorThreshold = 1.6; % put zero here if no outliers
-        opt.Display = 'off';
-        % Then fit the model
-        try
-            model1 = armax(seg1n, ord, opt);
-        catch E
-            msg = getReport(E);
-            go = false;
-            return
-        end
-        yfor = forecast(model1,seg1n(1:end-1),N2+1);
-        
-    else
-       % Calculate ARMA model and obtain the coeff. for the left segment
-        try
-            model1 = armax(seg1n, ord,'alg',myalg);
-        catch E
-            msg = getReport(E);
-            go = false;
-            return
-        end
-        yfor = forecast(model1, seg1n(1:end-1), N2+1);
-    end
-    
+    yfor = yfor.y;
+          
     % Estimation of residuals
     e1 = resid(model1, data1);
     rstd1 = std(e1.OutputData);
@@ -538,7 +326,7 @@ if sigd_yf > fac_sig*sigd_s1 && sigd_yf > fac_sig*sigd_s3
     sigd_yf = std(diff(yfor));
     sigd_s1 = std(diff(seg1));
     
-    if sigd_yf > fac_sig*sigd_s1 && sigd_yf > fac_sig*sigd_s3
+    if sigd_yf > fac_sig*sigd_s1 && sigd_yf > fac_sig*sigd_s2
 %         yfor = yfor.*(sig_s1/sig_yf);
        interp = NaN(1,N2);
        go = false;
@@ -552,65 +340,37 @@ end
 
 sigd_yb = std(diff(yback));
 
-if sigd_yb > fac_sig*sigd_s3 && sigd_yb > fac_sig*sigd_s1
-    seg3 = sigma_clip(seg3,2);
-    seg3n = (seg3-mean(seg3))./std(seg3);
-    sig_s3 = std(seg3);
+if sigd_yb > fac_sig*sigd_s2 && sigd_yb > fac_sig*sigd_s1
+    seg2 = sigma_clip(seg2,2);
+    seg2n = (seg2-mean(seg2))./std(seg2);
+    sig_s2 = std(seg2);
     
-    if strcmp(modo, 'old')
-        % Calculate ARMA model and obtain the coeff. for the right segment
-        try
-            model2 = armax(flipud(seg3n), ord,'alg',myalg);
-        catch E
-            msg = getReport(E);
-            go = false;
-            return
-        end
-        ts = 1;
-        data2 = iddata(flipud(seg3n(2:end)),[],ts);
-        yback = pred(model2,data2,N2+1,'e');
-%         yback = pred(model2,data2,N2,'e');
-        yback = yback.y;
-        
-    elseif strcmp(modo, 'new')
-        % Set the options
-        opt = armaxOptions;
-        opt.Advanced.ErrorThreshold = 1.6; % put zero here if no outliers
-        opt.Display = 'off';
-        % Then fit the model
-        try
-            model2 = armax(flipud(seg3n), ord, opt);
-        catch E
-            msg = getReport(E);
-            go = false
-            return
-        end
-        yback = forecast(model2, flipud(seg3n(2:end)), N2+1);
-
-    else   
-        % Calculate ARMA model and obtain the coeffs for the right segment
-        try
-            model2 = armax(flipud(seg3n),ord,'alg',myalg);
-        catch E
-            msg = getReport(E);
-            go = false;
-            return
-        end
-        yback = forecast(model2,flipud(seg3n(2:end)),N2+1);
+    % Calculate ARMA model and obtain the coeff. for the right segment
+    try
+        model2 = armax(flipud(seg2n), ord,'alg',myalg);
+    catch E
+        msg = getReport(E);
+        go = false;
+        return
     end
+    ts = 1;
+    data2 = iddata(flipud(seg2n(2:end)),[],ts);
+    yback = pred(model2,data2,N2+1,'e');
+%         yback = pred(model2,data2,N2,'e');
+    yback = yback.y;
     yback = flipud(yback);
     
     % Estimation of residuals
     e2 = resid(model2, data2);
     rstd2 = std(e2.OutputData);
     r2 = rstd2*randn(size(yback));
-    yback = ( (yback + r2).*sig_s3 + mean(seg3) );
+    yback = ( (yback + r2).*sig_s2 + mean(seg2) );
     
     sigd_yb = std(diff(yback));
-    sigd_s3 = std(diff(seg3));
+    sigd_s2 = std(diff(seg2));
     
-    if sigd_yb > fac_sig*sigd_s3 && sigd_yb > fac_sig*sigd_s1
-%         yback = yback.*(sig_s3/sig_yb);
+    if sigd_yb > fac_sig*sigd_s2 && sigd_yb > fac_sig*sigd_s1
+%         yback = yback.*(sig_s2/sig_yb);
         interp = NaN(1,N2);
         go = false;
         return
