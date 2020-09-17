@@ -1,9 +1,14 @@
 function plotint(s1, s2, interp, yfor, yback)
-% function plotint(s1, s2, interp) plots the interpolated segment between
+% function plotint(s1, s2, interp, yfor, yback) plots the interpolated segment between
 % s1 and s2 for test purposes.
 % Optional arguments:
-% varargin{1} is the forward extrapolation
-% varargin{2} is the backward extrapolation
+% yfor and yback are forward and backward extrapolations respect.
+%
+% s1 in blue
+% interp in black
+% s2 in magenta
+% yfor in red
+% yback in green
 %
 % Version: 0.2
 % Changes from the last version:
