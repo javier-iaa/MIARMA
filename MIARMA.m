@@ -14,7 +14,7 @@ function strout = MIARMA(strin)
 %
 %            and parameters in the struct params that contains the fields:
 %                temp, facmin, facmax, npi, npz, repmax, pmin, pmax, mseg, 
-%                nuc, and always_int. 
+%                nuc, always_int and qmax. 
 %
 %            Consult the documentation for a detailed description of each 
 %            of these parameters.
@@ -37,46 +37,44 @@ function strout = MIARMA(strin)
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 %
-% Dependencies:     armaord_par.m   
-%                   armaord.m       
-%                   indgap.m        
-%                   armafill.m      
-%                   lincorr.m       
-%                   sing.m
-%                   af_simp.m       
-%                   polintre.m
-%                   armaint.m       
-%                   pred.m          
+% Dependencies:      armaord_par.m   
+%                              armaord.m       
+%                              indgap.m        
+%                              armafill.m      
+%                              lincorr.m       
+%                              sing.m
+%                              af_simp.m       
+%                              polintre.m
+%                              armaint.m       
+%                              pred.m          
 %
-% Version: 0.0.0.1
+% Version: 0.0.0.2
 %
 % Changes: 
-% - This is a transition version where the code is cleaned in order to 
-% facilitate the posterior translation to R language.
-% - Removed input files
-% - Removed all references to CoRoT
-% - Removed cellfind calls
-% - Removed version control
+% - Header in red color.
+% - Control the ratio between num of points fed to models and 
+%  num of points interpolated through parameter facint.
+% - New parameter qmax.
 %
-% Date: 23/07/2020
+% Date: 06/02/2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
 
 %% Some definitions
-numvers = '0.0.0.1';
+numvers = '0.0.0.2';
 
 lgaps0 = NaN;
 Llin = NaN;
 
 % Header
-fprintf('\n #############################################################\n');
-fprintf(' #                                                           #\n');
-fprintf(' #                    MIARMA  %s                        #\n', numvers);
-fprintf(' #    by  J.Pascual-Granado, IAA-CSIC, Spain. 2020           #\n');
-fprintf(' #               License GNU GPL v3.0                        #\n');
-fprintf(' #                                                           #\n');
-fprintf(' #############################################################\n\n');
+fprintf(2, '\n #############################################################\n');
+fprintf(2, ' #                                                           #\n');
+fprintf(2, ' #                    MIARMA  %s                        #\n', numvers);
+fprintf(2, ' #    by  J.Pascual-Granado, IAA-CSIC, Spain. 2020           #\n');
+fprintf(2, ' #               License GNU GPL v3.0                        #\n');
+fprintf(2, ' #                                                           #\n');
+fprintf(2, ' #############################################################\n\n');
 
 %% Input data
 timein = strin.time;
@@ -99,11 +97,13 @@ nuc = 1;
 mseg = 1000;
 pmin = 2;
 pmax = 30;
+qmax = 30;
 repmax = 3;
 npz = 36;
 npi = 4;
 facmax = 6;
 facmin = 4;
+facint = 3;
 ascii_struct = false;
 
 if isfield( strin, 'params' )
@@ -127,7 +127,7 @@ if isfield( strin, 'params' )
     end
 
     % Lower limit in gap length for the ARMA interpolation
-    % (below this limit linear interpolation is used)
+    % (below this limit a simpler interpolation is used)
     if isfield( strin.params, 'npi')
         npi = strin.params.npi;
     end
@@ -145,7 +145,6 @@ if isfield( strin, 'params' )
     end
 
     % Range for the search of the optimal ARMA orders [pmin,pmax] 
-    % The MA order is search in the range [0,p]
     if isfield( strin.params, 'pmin')
         pmin = strin.params.pmin;
     end
@@ -154,6 +153,11 @@ if isfield( strin, 'params' )
         pmax = strin.params.pmax;
     end
 
+    % The MA order is search in the range [0,qmax]
+    if isfield( strin.params, 'qmax')
+        qmax = strin.params.qmax;
+    end
+    
     % Maximum length of the segment used to calculate ARMA order
     if isfield( strin.params, 'mseg')
         mseg = strin.params.mseg;
@@ -186,6 +190,11 @@ if isfield( strin, 'params' )
     if isfield(strin.params, 'akaname')
         akaname = strin.params.akaname;
     end
+    
+    % Min. ratio between interpolated datapoints and the length of the segments
+    if isfield(strin.params, 'facint')
+        facint = strin.params.facint;
+    end
         
 end
 
@@ -197,17 +206,18 @@ strout.params.nuc = nuc;
 strout.params.mseg = mseg;
 strout.params.pmin = pmin;
 strout.params.pmax = pmax;
+strout.params.qmax = qmax;
 strout.params.repmax = repmax;
 strout.params.npz = npz;
 strout.params.npi= npi;
 strout.params.facmax = facmax;
 strout.params.facmin = facmin;
 strout.params.ascii_struct = ascii_struct;
+strout.params.facint = facint;
 % strout.params.akaname = akaname;
 
 % List of parameters for armafill/af_simp
-% params = [facmin facmax npi pmin rstd];
-params = [facmin facmax npi pmin];
+params = [facmin facmax npi pmin facint];
 
 %% Building the gap indexes
 if isfield(strin, 'igap')
@@ -285,6 +295,7 @@ else
             fprintf(fich, '# gaps_linear: %d\n', Llin);
             fprintf(fich, '# facmin: %d\n', facmin);
             fprintf(fich, '# facmax: %d\n', facmax);
+            fprintf(fich, '# facint: %d\n', facint);
             fprintf(fich, '# npi: %d\n', npi);
             fprintf(fich, '# npz: %d\n', npz);
             fprintf(fich, '# niter: %d\n', repmax);
@@ -293,7 +304,7 @@ else
    
             for i=1:L
                 fprintf(fich,'%16.12f %16.13f %d\n',...
-                    timeout(i),datout(i),flagout(i));
+                    timeout(i), datout(i), flagout(i));
             end
             fclose(fich);
         else
@@ -338,22 +349,29 @@ else
     fprintf('Step 4 - Order estimation\n\nPlease wait...\n');
     
     % Optimal order (p,q) for the ARMA model of seg
-    pminstr = num2str(pmin,'%03.f');
-    pmaxstr = num2str(pmax,'%03.f');
+%     pminstr = num2str(pmin,'%03.f');
+%     pmaxstr = num2str(pmax,'%03.f');
+%     qmaxstr = num2str(qmax,'%03.f');
     
+    % Parallel computation was implemented a long time ago and it is 
+    % deprecated now. It wasn't removed since this part of the code 
+    % might be ported to other languages but, due to the restrictions in 
+    % the standard version of Matlab it is not interesting to support its 
+    % development here any more. So be careful when using armaord_par 
+    % or any other parallelized version of the code since it is old.
     if nuc == 1
         if exist( 'akaname', 'var' )
-            fileaka = [akaname(1:end-4) '_' pminstr '_' pmaxstr];
-            aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, 'w', fileaka);
-            
+            % fileaka is just the star id or temp
+            fileaka = akaname(1:end-4);
+            aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
+                'qmax', qmax, 'w', fileaka);
         elseif temp            
-            fileaka = ['temp_' pminstr '_' pmaxstr];
-            aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, 'w', fileaka);
-            
+            aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
+                'qmax', qmax, 'w' );
         else            
-            aka = armaord( seg, 'pmin', pmin, 'pmax', pmax);            
-        end
-        
+            aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
+                'qmax', qmax);            
+        end        
     else
         % Open a pool for parallel computation with nuc workers.       
         matlabpool(nuc);
@@ -521,6 +539,7 @@ else
     fprintf(fich,'# gaps_linear: %d\n',Llin);
     fprintf(fich,'# facmin: %d\n',facmin);
     fprintf(fich,'# facmax: %d\n',facmax);
+    fprintf(fich, '# facint: %d\n', facint);
     fprintf(fich,'# npi: %d\n',npi);
     fprintf(fich,'# npz: %d\n',npz);
     fprintf(fich,'# niter: %d\n',repmax);
