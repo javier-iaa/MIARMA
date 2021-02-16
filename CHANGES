@@ -1,3 +1,25 @@
+16-feb-21   * MIARMA 0.0.0.2
+	    - Header in red color.
+	    - Control the ratio between num of points fed to models and num of points interpolated through parameter facint.
+	    - New parameter qmax.
+	    - Minor improvements to the code.
+	    
+	    * af_simp 0.2.1
+	    - Data points taken out with sing are no longer recovered.
+ 	    - New check through facint parameter (see MIARMA.m for more)
+	    - Removed parameter S
+	    
+	    * armaint 1.3.10
+	    - Minor improvements
+	    
+	    * armaord 1.1.0
+	    - New parameter qmax
+	    - Print number of models to be calculated.
+	    - Multiple minor corrections and code optimization.
+	    
+	    * saveaka (not implemented yet)
+	    - New function that will save akaike matrices in order to simplify armaord code. It will also allow saving aka files from Matlab environment.
+	    
 23-jul-20   * MIARMA 0.0.0.1
 	    - This is a transition version where the code is cleaned in order to facilitate the posterior translation to R language.
 	    - Removed input files
