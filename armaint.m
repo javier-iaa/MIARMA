@@ -3,20 +3,19 @@ function [interp, go] = armaint(seg1, seg2, ord, N2)
 % data points between the segments seg1 and seg2 using ARMA models.
 % To generate the output segment interp a triangular weight is used for
 % both segments.
-% Inputs:       seg1 - left data segment
+% Inputs:   seg1 - left data segment
 %               seg2 - right data segment
 %               ord - ARMA (p,q) orders
 %               N2 - length of the gap
 % Outputs:      interp - interpolated segment
 %               go - true when the interpolation works and false otherwise
-% Version: 1.3.9
+% Version: 1.3.10
 % Changes from the last version:
-% - Removed version control
 % - Minor improvements.
 %
 %  Calls: sigma_clip.m
 %  Author(s): Javier Pascual-Granado
-%  Date: 17/09/2020
+%  Date: 05/02/2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 go = true;
@@ -180,8 +179,7 @@ if ~isempty(find(isnan(seg1),1))
         go = false;
         return
     end
-    ts = 1;
-    data2 = iddata(flipud(seg2n(2:end)),[],ts);
+    data2 = iddata( flipud(seg2n(2:end)), [] );
     yback = pred(model2,data2,N2+1,'e');
     yback = yback.y;
     yback = flipud(yback);
@@ -211,8 +209,7 @@ if ~isempty(find(isnan(seg1),1))
             go = false;
             return
         end
-        ts = 1;
-        data2 = iddata(flipud(seg2n(2:end)),[],ts);
+        data2 = iddata( flipud(seg2n(2:end)) ,[] );
         yback = pred(model2,data2,N2+1,'e');
         yback = yback.y;
         yback = flipud(yback);
@@ -250,16 +247,15 @@ seg2n = (seg2-mean(seg2))./sig_s2;
 % Forward extrapolation
 % Calculate ARMA model and obtain the coeff. for the left segment
 try
-    model1 = armax(seg1n,ord,'alg',myalg);
+    model1 = armax(seg1n, ord, 'alg', myalg);
 catch E
     msg = getReport(E);
     go = false;
     return
 end
-ts = 1;
-data1 = iddata(seg1n(1:end-1),[],ts);
-yfor = pred(model1,data1,N2+1,'e');
-%     yfor = pred(model1,data1,N2,'e');
+
+data1 = iddata( seg1n(1:end-1), []);
+yfor = pred( model1, data1, N2+1, 'e' );
 yfor = yfor.y;
 
 % Backward extrapolation
@@ -272,10 +268,9 @@ catch E
     go = false;
     return
 end
-ts = 1;
-data2 = iddata(flipud(seg2n(2:end)),[],ts);
+
+data2 = iddata( flipud(seg2n(2:end)), [] );
 yback = pred(model2,data2,N2+1,'e');
-%     yback = pred(model2,data2,N2,'e');
 yback = yback.y;
 yback = flipud(yback);
 
@@ -305,16 +300,14 @@ if sigd_yf > fac_sig*sigd_s1 && sigd_yf > fac_sig*sigd_s2
     
     % Calculate ARMA model and obtain the coeff. for the left segment
     try
-        model1 = armax(seg1n,ord,'alg',myalg);
+        model1 = armax(seg1n, ord, 'alg', myalg);
     catch E
         msg = getReport(E);
         go = false;
         return
     end
-    ts = 1;
-    data1 = iddata(seg1n(1:end-1),[],ts);
-    yfor = pred(model1,data1,N2+1,'e');
-%         yfor = pred(model1,data1,N2,'e');
+    data1 = iddata( seg1n(1:end-1), [] );
+    yfor = pred( model1, data1, N2+1, 'e' );
     yfor = yfor.y;
           
     % Estimation of residuals
@@ -347,16 +340,14 @@ if sigd_yb > fac_sig*sigd_s2 && sigd_yb > fac_sig*sigd_s1
     
     % Calculate ARMA model and obtain the coeff. for the right segment
     try
-        model2 = armax(flipud(seg2n), ord,'alg',myalg);
+        model2 = armax( flipud(seg2n), ord, 'alg', myalg );
     catch E
         msg = getReport(E);
         go = false;
         return
     end
-    ts = 1;
-    data2 = iddata(flipud(seg2n(2:end)),[],ts);
-    yback = pred(model2,data2,N2+1,'e');
-%         yback = pred(model2,data2,N2,'e');
+    data2 = iddata( flipud(seg2n(2:end)), [] );
+    yback = pred( model2, data2, N2+1, 'e');
     yback = yback.y;
     yback = flipud(yback);
     
