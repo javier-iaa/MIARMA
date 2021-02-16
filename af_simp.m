@@ -4,11 +4,11 @@ function [datout,flagout] = af_simp(datin, flagin, aka, ind1, params, varargin)
 %
 % af_simp fill gaps using ARMA models as predictors for the extrapolations
 %
-% Input:    datin - input data array
+% Input: datin - input data array
 %           flagin - status array. The gaps must be correctly flagged.
 %           aka - Akaike coefficient matrix
 %           ind1 - gap indexes
-%           params - parameter list, is an array of 3 elements:
+%           params - parameter list, is an array with these elements:
 %              facmin - min. ratio between segment length and number of 
 %                parameters for the model
 %              facmax - max. ratio[
@@ -16,20 +16,24 @@ function [datout,flagout] = af_simp(datin, flagin, aka, ind1, params, varargin)
 %                (below this limit linear interpolation is used)
 %              pmin - inf. limit por the AR order
 %              repmax - maximum number of iterations
+%              facint - min. ratio between segment length and number of 
+%                data points to interpolate inside the gap
 %
 % Output:   datout - ARMA interpolated data series
-%           flagout - residual status array
+%                flagout - residual status array
 %
 % Calls:   armaint.m
 %
-% Version: 0.2.0
+% Version: 0.2.1
 %
 % Changes from the last version: 
 % - Data points taken out with sing are no longer recovered.
+% - New check through facint parameter (see MIARMA.m for more)
+% - Removed parameter S
 % 
 % Author: Javier Pascual-Granado
 %
-% Date: 17/09/2020
+% Date: 05/02/2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 L = length(datin);
@@ -44,6 +48,7 @@ facmax = params(2);
 npi = params(3);
 pmin = params(4);
 iter = varargin{1};
+fc = params(5);
 
 % Data points used for the polynomial fitting.
 npint = 6;
@@ -51,7 +56,7 @@ npint = 6;
 % Internal parameter S is related to the efficiency. When the length of the
 % gap is > S times the length of any of the segments the algorithm is no 
 %longer efficient for filling such a long gap and the gap is left unfilled.
-S = 4;
+% S = 4;
 
 % Akaike matrix is used to select the optimum (p,q) order. The lowest p is
 % prioritized
@@ -225,6 +230,15 @@ while ind1f>=0,
         end
     end
     
+    % Check whether the segment length is enough to interpolate np
+    % data points inside the gap
+    if (len/np)<fc
+        ind1(1:2)=[];   
+        l1 = length(ind1);
+        ind1f = l1-1;
+        continue;
+    end
+    
     % Check whether the segment length is enough to fit the arma model
     d = sum(ord);
     fac = len / d;
@@ -266,7 +280,7 @@ while ind1f>=0,
     end
 
     % Too long segments are reduced by facmax for efficiency
-    if (fac > facmax) && (floor(facmax*d)>np/S),
+    if (fac > facmax) && (facmax*d>fc*np),
             if isempty(find(isnan(seg1),1)),  
                 newi1 = 1 + floor(fac-facmax)*d;
                 subi1 = subi1(newi1:end);
