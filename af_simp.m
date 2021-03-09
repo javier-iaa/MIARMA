@@ -18,22 +18,29 @@ function [datout,flagout] = af_simp(datin, flagin, aka, ind1, params, varargin)
 %              repmax - maximum number of iterations
 %              facint - min. ratio between segment length and number of 
 %                data points to interpolate inside the gap
+%              
+%             optional inputs:
+%               - iteration number for internal purposes
+%               - '1s' allows one-sided extrapolation when available 
+%                   data does not allow forward-backward interpolation,
+%                  otherwise (default), two-sided interpolation is used.
 %
 % Output:   datout - ARMA interpolated data series
 %                flagout - residual status array
 %
 % Calls:   armaint.m
 %
-% Version: 0.2.1
+% Version: 0.3.0
 %
 % Changes from the last version: 
-% - Data points taken out with sing are no longer recovered.
-% - New check through facint parameter (see MIARMA.m for more)
-% - Removed parameter S
+% - New optional input in varargin{end} activates one-sided extrapolation
+% for the cases in which no forward-backward extrapolation is possible.
+% - Minor fixes.
+% - Code is simplified and improved its legibility.
 % 
 % Author: Javier Pascual-Granado
 %
-% Date: 05/02/2021
+% Date: 09/03/2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 L = length(datin);
@@ -49,6 +56,10 @@ npi = params(3);
 pmin = params(4);
 iter = varargin{1};
 fc = params(5);
+onesd = false;
+if strcmp( varargin{end}, '1s')
+    onesd = true;
+end
 
 % Data points used for the polynomial fitting.
 npint = 6;
@@ -75,7 +86,8 @@ l1 = l0;
 
 %% Gap-filling process %% 
 ind1f = l0-1;
-i = 1;
+% i = 1;
+indlast = 0;
 
 if nargin==5,
     text_iter = 'Gap filling iteration 1\n     Please wait...\n';
@@ -91,154 +103,215 @@ end
 % Here begins the gap-filling process
 while ind1f>=0,
     
-    % Data segments selection
+%% Data segments selection
     if l1==2,   % only one gap
-        if ind1(i)==1,
-            subi2 = (ind1(i+1)+1):L;
-            seg2 = datout( subi2 );
+        if ind1(1)==1           % Left edge
             seg1 = NaN;
-        else
-            if ind1(i+1)==L
-                seg2 = NaN;
-            else
-                subi2 = (ind1(i+1)+1):L;
-                seg2 = datout( subi2 );
-            end
-            
-            subi1 = 1:ind1(i)-1;
-            nf = find( flagout( subi1 ) == 1, 1, 'last');
-            if ~isempty(nf),
-                subi1( 1:nf ) = [];
-            end
+            subi2 = (ind1(2)+1):L;
+            seg2 = datout( subi2 );
+        elseif ind1(2)==L       % Right edge
+            subi1 = 1:ind1(1)-1;
             seg1 = datout( subi1 );
-        end
-    else
-        if ind1(i)==1,          % Left edge
-            subi2 = (ind1(i+1)+1):(ind1(i+2)-1);
-            seg2 = datout( subi2 );
-            seg1 = NaN;
-        elseif ind1(i+1)==L,    % Right edge
             seg2 = NaN;
-            
-            subi1 = (ind1(i-1)+1):(ind1(i)-1);
-            nf = find( flagout( subi1 ) == 1, 1, 'last');
-            if ~isempty(nf),
-                subi1( 1:nf ) = [];
-            end
+        else
+            subi1 = 1:ind1(1)-1;
+            seg1 = datout( subi1 );
+            subi2 = (ind1(2)+1):L;
+            seg2 = datout( subi2 );
+        end
+%         nf = find( flagout( subi1 ) == 1, 1, 'last');
+%         if ~isempty(nf)
+%             subi1( 1:nf ) = [];
+%         end
+%         seg1 = datout( subi1 );
+    else
+        if ind1(1)==1          % Left edge
+            seg1 = NaN;
+            subi2 = (ind1(2)+1):(ind1(3)-1);
+            seg2 = datout( subi2 );
+        elseif ind1(2)==L,    % Right edge
+            seg2 = NaN;
+            subi1 = (indlast+1):(ind1(1)-1);
+%             nf = find( flagout( subi1 ) == 1, 1, 'last');
+%             if ~isempty(nf),
+%                 subi1( 1:nf ) = [];
+%             end
             seg1 = datout( subi1 );
         else           
-            subi1 = 1:ind1(i)-1;
+%             subi1 = 1:ind1(1)-1;
+            subi1 = (indlast+1):(ind1(1)-1);
+
+            if length(subi1) < 3
             % If the length of seg1 is less than 3 no ARMA model can be
             % fitted so this data segment is unusable.
             % Don't confuse this with what happens with the sing 
             % algorithm, which can be used to improve the quality of 
             % interpolations.
-            if length(subi1) < 3,
-                ind1(1:2)=[];
-                l1 = length(ind1);
-                ind1f = l1-2;
-                flagout(subi1) = -1;
-                continue;
-            end
-            % Similarly if this segment cannot be used to perform a forward
-            % extrapolation, the algorithm jumps to the next gap and for
-            % the next iteration to fill this one
-            if flagout(subi1)==0.5,
-                ind1(1:2)=[];
-                l1 = length(ind1);
-                ind1f = l1-2;
-                continue;
-            end
-            nf = find( flagout( subi1 ) == 1, 1, 'last');
-            if ~isempty(nf),
-                subi1( 1:nf ) = [];
-            end
-            seg1 = datout( subi1 );
-
-            if i==(l0-1),       % Last gap
-                subi2 = (ind1(i+1)+1):L;
-                seg2 = datout( subi2 );
-            else
-                subi2 = (ind1(i+1)+1):(ind1(i+2)-1);                
-                % If the length of seg2 is less than 3 no ARMA model can be
-                % fitted so this data segment is unusable.
-                % Don't confuse this with what happens with the sing 
-                % algorithm, which can be used to improve the quality of 
-                % interpolations.
-
-                if length(subi2) < 3,
+                if onesd
+                    seg1 = NaN;
+                else
                     ind1(1:2)=[];
                     l1 = length(ind1);
                     ind1f = l1-2;
-                    flagout(subi2) = -1;
+                    flagout(subi1) = -1;
                     continue;
                 end
-                % Similarly if this segment cannot be used to perform a forward
-                % extrapolation, the algorithm jumps to the next gap and for
-                % the next iteration to fill this one
-                if flagout(subi2)==-0.5,
+                
+            elseif flagout(subi1)==0.5,
+            % Similarly if this segment cannot be used to perform a forward
+            % extrapolation, the algorithm jumps to the next gap and for
+            % the next iteration to fill this one
+                if onesd
+                    seg1 = NaN;
+                else
                     ind1(1:2)=[];
                     l1 = length(ind1);
                     ind1f = l1-2;
                     continue;
                 end
                 
-                seg2 = datout( subi2 );
+            else
+%                 nf = find( flagout( subi1 ) == 1, 1, 'last');
+%                 if ~isempty(nf),
+%                     subi1( 1:nf ) = [];
+%                 end
+                seg1 = datout( subi1 );
+
+                subi2 = (ind1(2)+1):(ind1(3)-1);                
+
+                if length(subi2) < 3
+                % If the length of seg2 is less than 3 no ARMA model can be
+                % fitted so this data segment is unusable.
+                % Don't confuse this with what happens with the sing 
+                % algorithm, which can be used to improve the quality of 
+                % interpolations.
+                    if onesd
+                        seg2 = NaN;
+                    else
+                        ind1(1:2)=[];
+                        l1 = length(ind1);
+                        ind1f = l1-2;
+                        flagout(subi2) = -1;
+                        continue;
+                    end
+
+                elseif flagout(subi2)==-0.5
+                % Similarly if this segment cannot be used to perform a forward
+                % extrapolation, the algorithm jumps to the next gap and for
+                % the next iteration to fill this one
+                    if onesd
+                        seg2 = NaN;
+                    else
+                        ind1(1:2)=[];
+                        l1 = length(ind1);
+                        ind1f = l1-2;
+                        continue;
+                    end
+                    
+                else
+                
+%                  nf = find( flagout( subi2 ) == 1, 1, 'last');
+%                  if ~isempty(nf),
+%                      subi2( 1:nf ) = [];
+%                  end
+                    seg2 = datout( subi2 );
+                end
             end
         end      
     end 
     
     % number of lost datapoints in the gap
-    np = ind1(i+1)-ind1(i)+1;
+    np = ind1(2) - ind1(1) + 1;
     
+    % Percentage complete
     fprintf(repmat('\b',1,5));
-    fprintf('%3.0f %%', 100*ind1(i)/L);
+    fprintf('%3.0f %%', 100*ind1(1)/L);
 
-
-    lseg1 = length(seg1);
-    lseg2 = length(seg2);
-    difl = lseg1 - lseg2;
-
-    % Data segments are truncated in order to have the same length
-    if difl > 0
-        subi1 = subi1((difl+1):end);
-        seg1 = datout( subi1 );
-    elseif difl < 0
-        subi2 = subi2(1:(lseg2+difl));
-        seg2 = datout( subi2 );
-    end
-    len = length(seg1);
+ %% Perform several checks over the data
     
-    % Small gaps are linearly interpolated
-    if isempty(find(isnan(seg1),1)) && isempty(find(isnan(seg2),1)),        
-        if (np <= npi),
-            if len>npint
-                seg1 = seg1((len-npint+1):end);
-                seg2 = seg2(1:npint);
-            end
-            
-            interp = polintre (seg1, seg2, np, 3);
-                 
-            datout(ind1(1):ind1(2)) = interp;
-            flagout(ind1(1):ind1(2)) = 0;
-            ind1(1:2)=[];
-            
-            l1 = length(ind1);
-            ind1f = l1-1;
-            
-            continue;
+    % NaN conditions - no nans in seg1 and seg2
+    nnanc1 = isempty(find(isnan(seg1),1));
+    nnanc2 = isempty(find(isnan(seg2),1));
+    no_nan_cond = nnanc1 && nnanc2;
+   
+    if no_nan_cond
+        lseg1 = length(seg1);
+        lseg2 = length(seg2);
+        
+        % Checks whether the segment length is enough to interpolate np
+        % data points in the gap
+           if lseg1/np<fc
+                if lseg2/np<fc
+                    ind1(1:2)=[];
+                    l1 = length(ind1);
+                    ind1f = l1 - 1;
+                    continue
+                else
+                    if onesd
+                        seg1 = NaN;
+                        nnanc1 = false;
+                        len = length(seg2);
+                    else
+                        ind1(1:2)=[];
+                        l1 = length(ind1);
+                        ind1f = l1 - 1;
+                        continue
+                    end
+                end
+           else
+                if lseg2/np<fc
+                    if onesd
+                        seg2 = NaN;
+                        nnanc2 = false;
+                        len = length(seg1);
+                    else
+                        ind1(1:2)=[];
+                        l1 = length(ind1);
+                        ind1f = l1 - 1;
+                        continue
+                    end
+                else
+                    % Truncate segments in order to have the same length
+                    difl = lseg1 - lseg2;
+                    if difl > 0
+                        subi1 = subi1((difl+1):end);
+                        seg1 = datout( subi1 );
+                    elseif difl < 0
+                        subi2 = subi2(1:(lseg2+difl));
+                        seg2 = datout( subi2 );
+                    end
+                    len = length(seg1);
+                    
+                    % Small gaps are linearly interpolated
+                    if (np <= npi),
+                        if len>npint
+                            seg1 = seg1((len-npint+1):end);
+                            seg2 = seg2(1:npint);
+                        end
+
+                        interp = polintre (seg1, seg2, np, 3);
+
+                        datout(ind1(1):ind1(2)) = interp;
+                        flagout(ind1(1):ind1(2)) = 0;
+                        ind1(1:2)=[];
+
+                        l1 = length(ind1);
+                        ind1f = l1-1;
+
+                        continue;
+                    end                    
+                end
+           end
+    else
+        % If one of the segment is nan the length of the other will be the 
+        % longer necessarily.
+        if lseg1 > lseg2
+            len = length(seg1);
+        else
+            len = length(seg2);
         end
-    end
-    
-    % Check whether the segment length is enough to interpolate np
-    % data points inside the gap
-    if (len/np)<fc
-        ind1(1:2)=[];   
-        l1 = length(ind1);
-        ind1f = l1-1;
-        continue;
-    end
-    
+    end   
+          
     % Check whether the segment length is enough to fit the arma model
     d = sum(ord);
     fac = len / d;
@@ -281,19 +354,20 @@ while ind1f>=0,
 
     % Too long segments are reduced by facmax for efficiency
     if (fac > facmax) && (facmax*d>fc*np),
-            if isempty(find(isnan(seg1),1)),  
-                newi1 = 1 + floor(fac-facmax)*d;
-                subi1 = subi1(newi1:end);
-                seg1 = datout( subi1 );
-            end
-            if isempty(find(isnan(seg2),1)),          
-                newi2 = len - newi1 + 1;
-                subi2 = subi2(1:newi2);
-                seg2 = datout( subi2 );
-            end
-            len = length(seg1);
+        if nnanc1  
+            newi1 = 1 + floor(fac-facmax)*d;
+            subi1 = subi1(newi1:end);
+            seg1 = datout( subi1 );
+        end
+        if nnanc2
+            newi2 = len - newi1 + 1;
+            subi2 = subi2(1:newi2);
+            seg2 = datout( subi2 );
+        end
     end
-                
+            
+%%  Interpolation
+    
     % Interpolation algorithm. go indicates whether it was possible or not
     [interp, go] = armaint(seg1, seg2, ord, np);
     
@@ -313,6 +387,7 @@ while ind1f>=0,
 %         datout(reco) = datin(reco);
 %     end
     
+    indlast = ind1(2);
     ind1(1:2)=[];
     
     % reinicialization
