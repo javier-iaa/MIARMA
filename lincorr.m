@@ -7,12 +7,15 @@ function [data1, flag1] = lincorr(data, flag, ind, npi)
 %           npi - limits the size of the gaps to be interpolated.
 % Ouputs:   data1 - time series after lin.interpolation
 %           flag1 - new status array
-% Version: 1.0.6
-% Changes from the last version: waitbars removed.
+% Version: 1.0.7
+% Changes from the last version:
+%   - Code cleaned.
+%   - Calls polintre v0.1
+%   - Fixed issue with npint being too small.
 %
 % Calls: polintre.m
 % Author(s): Javier Pascual-Granado
-% Date: 27/05/2020
+% Date: 05/03/2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Order used for the polynomial interpolation
@@ -21,6 +24,10 @@ ord = 3;
 % Data points used for the polynomial fitting. Be careful with this, just
 % a few data points is recommended.
 npint = ord*2;
+
+if npi>npint
+    npint = npi;
+end
 
 flag1 = flag;
 data1 = data;
@@ -35,8 +42,6 @@ if isempty(ind)==1,
 end
 
 L = length(ind);
-
-% h = waitbar(0,'Step 1 - Small gaps correction...');
 
 i=1;
 while i <= L-1,
@@ -56,7 +61,6 @@ while i <= L-1,
     
     if isempty(seg1) || isempty(seg2),
         i = i+2;
-%         waitbar(i/L,h);
         continue;
     end
     
@@ -75,27 +79,7 @@ while i <= L-1,
         interp = polintre (seg1, seg2, dif, ord);
         data1(ind(i):ind(i+1)) = interp;
         flag1(ind(i):ind(i+1)) = 0;
-%         if i==1,
-%             lseg = lseg1 + dif + lseg2;            
-%             interp = interp1([1:lseg1 (lseg1+dif+1):lseg],...
-%                [seg1 seg2],lseg1+(1:dif),'spline');
-%             interp = interp + rstd*randn(size(interp));
-            
-%             data1(ind(1):ind(2)) = interp;
-%             flag1(ind(1):ind(2)) = 0;
-%         else              
-%             lseg = lseg1+dif+lseg2;            
-%             interp = interp1([1:lseg1 (lseg1+dif+1):lseg],...
-%                [seg1 seg2],lseg1+(1:dif),'spline');
-%             interp = interp + rstd*randn(size(interp));
-%             
-%             data1(ind(i):ind(i+1)) = interp;
-%             flag1(ind(i):ind(i+1)) = 0;
-%         end
     end
 
     i = i+2;
-%     waitbar(i/L,h);
 end
-
-% close(h);
