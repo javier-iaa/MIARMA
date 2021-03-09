@@ -48,21 +48,21 @@ function strout = MIARMA(strin)
 %                              armaint.m       
 %                              pred.m          
 %
-% Version: 0.0.0.2
+% Version: 0.0.1.0
 %
 % Changes: 
-% - Header in red color.
-% - Control the ratio between num of points fed to models and 
-%  num of points interpolated through parameter facint.
-% - New parameter qmax.
+%  - Fixed issue #35
+%  - Minor improvements.
+%  - 1 Minor bug fixed.
+%  - Use new version of af_simp 0.3
 %
-% Date: 06/02/2021
+% Date: 09/03/2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
 
 %% Some definitions
-numvers = '0.0.0.2';
+numvers = '0.0.1.0';
 
 lgaps0 = NaN;
 Llin = NaN;
@@ -139,7 +139,10 @@ if isfield( strin, 'params' )
         npz = strin.params.npz;
     end
     
-    % Number of iterations of the gap-filling loop
+    % Number of iterations of the gap-filling loop. It might be interesting 
+    % to use a number higher than 2 since sometimes the number of gaps
+    % from one iteration to the next one is the same in spite of the gaps 
+    % to fill being different.
     if isfield( strin.params, 'repmax')
         repmax = strin.params.repmax;
     end
@@ -417,16 +420,15 @@ if numgap==1
         [datout, flagout] = armafill( datout, flagout, aka, igap, params, j );
     end
     
-%     if mod(j,2)==0
-%         datout = datout(end:-1:1);
-%     end
-
+    igap = indgap(flagout,j+1);
     l1 = length(igap);
     numgap = round(l1/2);
     fprintf('Number of gaps: %d\n', numgap);
     
 else
+    fprintf('\n *Starting the gap-filling iterative process*\n\n');
     while numgap>1
+        
         while (rep<repmax && l0>=2)
             if simpl,
                 [datout, flagout] = af_simp( datout, flagout, aka, igap, params, j );
@@ -453,31 +455,31 @@ else
             % Number of gaps
             l1 = length(igap);
             numgap = round(l1/2);
-            fprintf('Number of gaps: %d\n', numgap);
+            fprintf('Number of gaps: %d\n\n', numgap);
             
             j = j + 1;
             
             % Every iteration begins from the opposite side of the series
-            datout = datout(end:-1:1);
-            flagout = flagout(end:-1:1);
+            datout = flipud( datout );
+            flagout = fliplr( flagout );
             igap = L-igap+1;
-            igap = igap(end:-1:1);
+            igap = fliplr( igap );
 
             % Termination condition: the number of gaps is not repeated 
             % more than twice in consecutive iterations
             if l1~=l0
                 rep = 0;
+                l0 = l1;
             else
                 rep = rep+1;
             end
-            l0 = l1;
         end
         
         if mod(j,2)==0
-            datout = datout(end:-1:1);
-            flagout = flagout(end:-1:1);
+            datout = flipud( datout );
+            flagout = fliplr( flagout );
             igap = L-igap+1;
-            igap = igap(end:-1:1);
+            igap = fliplr( igap );
         end
 
 %         numgap = floor(l1/2);
@@ -486,6 +488,7 @@ else
         if numgap>1
             [flagout, go] = gapmerge(flagout,igap);
             if go==true
+                fprintf('\n *Reinicialization with gap merging*\n\n');
                 flagin(flagout==-1)=-1;
                 igap = indgap(flagout,j+1);
                 rep = 0;
@@ -511,13 +514,36 @@ if (exist('Llin','var'))
     Llin = Llin + length(find(flagout~=0));
 end
 
-%% Here goes a new section for always_int which fills the gaps left due to 
-% unsolved issues in armaint that activate the flag <go> to False
-% When ARMA cannot be used we will use other algorithm (polintre)
-% If the flag always_int is false this section should not be run.
+%% Final iteration using one-sided extrap (if always_int is on)
+% Fill gaps left previously due to any issue in armaint that set the flag 
+% <go> to False.
 
-igap = indgap(flagout);
-[datout, flagout] = lincorr(datout, flagout, igap, inf);
+if (always_int && numgap > 0)
+    fprintf('\n *Restarting the gap-filling iterative process with one-sided extrap*\n\n');
+%     fprintf('\n *Final iteration*\n\n');
+    igap = indgap(flagout);
+%     [datout, flagout] = lincorr(datout, flagout, igap, inf);
+    while l1>0
+        if j>repmax
+            fprintf(2, '\nWarning: interpolation finished before all gaps could be filled.');
+            fprintf(2, '\nTry different values in the parameter structure (e.g. facint).\n\n');
+            break;
+        end
+        
+        [datout, flagout] = af_simp( datout, flagout, aka, igap, params, j, '1s' );
+        
+        igap = indgap(flagout, j+1);
+        if isempty(igap)          
+            fprintf('Number of gaps: 0\n0');
+            break;
+        end
+        l1 = length(igap);
+        numgap = round(l1/2);
+        fprintf('Number of gaps: %d\n', numgap);
+        
+        j = j + 1;
+    end
+end
 
 %% Save output
 if ~ascii_struct
