@@ -1,3 +1,31 @@
+09-mar-21   * MIARMA 0.0.1.0
+	    - Fixed issue #35
+	    - Minor improvements.
+	    - 1 Minor bug fixed.
+	    - Use new version of af_simp 0.3
+	    
+	    * af_simp 0.3.0
+	    - New optional input in varargin{end} activates one-sided extrapolation for the cases in which no forward-backward extrapolation is possible.
+	    - Minor fixes.
+	    - Code is simplified and improved its legibility.
+
+	    * armaord 1.1.1
+	    - several minor bugs fixed.
+	    
+	    * polintre 0.1
+	    - Optimization and minor fixes.
+	    - Note the factor 0.1 in line 46 to limit noise dispersion.
+
+	    * regsamp 0.7
+	    - method is changed from 'linear' to 'pchip'.
+	    - initial time is recovered
+	    - minor fixes.
+	    
+	    * lincorr 1.0.7
+	    - Code cleaned.
+	    - Calls polintre v0.1
+	    - Fixed issue with npint being too small.
+
 16-feb-21   * MIARMA 0.0.0.2
 	    - Header in red color.
 	    - Control the ratio between num of points fed to models and num of points interpolated through parameter facint.
