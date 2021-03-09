@@ -4,6 +4,8 @@ function varargout = regsamp(varargin)
 % given regular sampling.
 % An approximately regular sampling is assumed in the segments without
 % gaps.
+% In any case, time values are extrapolated to get evenly spaced time series
+%
 % Inputs:   an ASCII filename of a file containing the input data array, the
 %           corresponding time array, and the status array
 %
@@ -15,11 +17,14 @@ function varargout = regsamp(varargin)
 %           status, otherwise:
 %           [timeout,dataout,flagout] = regsamp(timein,datain,flagin)
 %
-% Version: 0.6
-% Changes: Time values are extrapolated to get evenly spaced time series
+% Version: 0.7
+% Changes: 
+%   - method is changed from 'linear' to 'pchip'.
+%   - initial time is recovered
+%   - minor fixes.
 %
 %  Author: Javier Pascual-Granado
-%  $Date: 14/03/2019$
+%  $Date: 04/03/2021$
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Input data
@@ -43,7 +48,7 @@ datin = reshape(datin,1,L);
 flagin = reshape(flagin,1,L);
 
 % Time interval between measures
-dt = timein(2:L)-timein(1:L-1);
+dt = diff( timein );
 
 %% Estimate sampling
 samp = sampest(timein); % estimate of the mean global sampling
@@ -62,22 +67,25 @@ if isempty(ind),
     return;
 end
 
-timein = timein - timein(1);
+ t0 = timein(1);
+ timein = timein - t0;
 
-timef = samp*round(timein(end)/samp);
+timef = samp*round( timein(end)/samp );
 timeout = 0:samp:timef;
 L1 = length(timeout);
 datout = zeros(1,L1);
 flagout = ones(1,L1);
 i1 = zeros(1,L); % indexes of the nearest timeout to timein values
 
+% This is highly inefficient, should be optimised in future versions.
 for i=1:L,
-    [~, i1(i)] = min(abs(timeout-timein(i))); 
+    [~, i1(i)] = min( abs( timeout-timein(i) ) ); 
 end
 
-new_do = interp1(timein, datin, timeout(i1),'linear','extrap');
+new_do = interp1( timein, datin, timeout(i1), 'pchip', 'extrap' );
 datout(i1) = new_do;
 flagout(i1) = flagin;
+timeout = timeout + t0;
 
 varargout{1} = timeout;
 varargout{2} = datout;
