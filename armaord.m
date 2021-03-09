@@ -17,14 +17,12 @@ function varargout = armaord(S, varargin)
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 %
-% Version: 1.1.0
+% Version: 1.1.1
 %
 % Changes: 
-% - New parameter qmax
-% - Print number of models to be calculated.
-% - Multiple minor corrections and code optimization.
+% - 2 minor bugs fixed.
 %
-% Date: 12/02/2021
+% Date: 09/03/2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Information Criterion
@@ -101,8 +99,10 @@ nmod = (pmax-pmin+1)*(qmax+1);
 
 akamat = NaN( r, c );
 
-fprintf(' p in [%d, %d] and q in [0, %d]\n', pmin, pmax, qmax);
+fprintf('\n Coefficient p in range [%d,%d] and q in [0,%d]\n', pmin, pmax, qmax);
 fprintf(' %d models to be calculated\n', nmod);
+
+nsav = 0;
 
 iw = find( strcmp(varargin,'w'), 1 );
 if ~isempty(iw),    
@@ -191,7 +191,7 @@ if ~isempty(iw),
                 else
                     % Case i)
                     % Coeffs. in subset ie x je are read from akamat0
-                    ie = pmax0 - pmin;
+                    ie = pmax0 - pmin + 1;
                     ii0 = pmin - 1;
                     je = qmax0 + 1;
                     akamat(1:ie ,1:je) = akamat0( ii0:end, :);
@@ -249,7 +249,7 @@ if ~isempty(iw),
     end
     
     ncal = nmod - nsav;
-    fprintf(' %d models loaded, %d need to be calculated.\n', nsav, ncal);
+    fprintf(' %d models loaded, %d need to be calculated.\n\n', nsav, ncal);
     fichw = fopen(nomfich, 'w');
 end
 
@@ -257,8 +257,8 @@ end
 % This is the main loop where the Akaike coefficients are calculated for
 % each pair (p,q)
 
-tt0 = cputime;
-tt = tt0;
+tee = 0;
+tic;
 
 for i=0:qmax,
     
@@ -318,11 +318,11 @@ for i=0:qmax,
         end
         
         per = 100*(i+1)/(1+qmax);
-        now = cputime;
-        ee = now - tt;
-        fprintf('%.f%%...   %.f s last iteration, %.f since start\n', ...
-            per, ee, now-tt0); 
-        tt = cputime;
+        ee = toc;
+        tee = tee + ee;
+        fprintf(' %.f%%...  %.f s last iteration, %.f since start\n', ...
+            per, ee, tee); 
+        tic;
 end
 
 if ~isempty(iw),
@@ -359,3 +359,5 @@ elseif nargout==5,
     varargout{4} = L;
     varargout{5} = qmax;
 end
+
+toc;
