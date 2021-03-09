@@ -2,6 +2,15 @@ function interp = polintre(seg1, seg2, np, ord)
 % Interpolates between segments seg1 and seg2, np datapoints using a
 % polynomial fit with order ord. Estimate statistical properties of the
 % residuals and add a stochastic component mimicking the noise.
+%
+% Version: 0.1
+% Changes from the last version:
+% - Optimization and minor fixes.
+% - Note the factor 0.1 in line 46 to limit noise dispersion.
+%
+% Author(s): Javier Pascual-Granado
+% Date: 04/03/2021
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Weights for the interpolation
 % wp = 1/(np+1);
@@ -26,20 +35,15 @@ t2 = (l1+np+1):(l1+np+l2);
 t_tot = 1:L;
 t_data = [t1 t2];
 
-
 % Fit model
 pp_data = polyfit(t_data', data, ord);
 pval_tot = polyval(pp_data, t_tot);
-pval_seg1 = pval_tot(t1);
-pval_seg2 = pval_tot(t2);
 pval_int = pval_tot(t_int);
 
 % Get residuals
-res1 = seg1 - pval_seg1';
-res2 = seg2 - pval_seg2';
-res = [res1; res2];
+res = data - pval_tot(t_data)' ;
 rstd = std(res);
-r = rstd*randn(size(t_int));
+r = 0.1*rstd*randn(size(t_int));
 
 % Interpolation
 interp = pval_int + r;
