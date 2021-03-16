@@ -1,0 +1,20 @@
+## Possible extra diagnostics to be implemented
+
+* AIC
+* Mean Squared Error / Mean Absolute Error -> ACF and PACF for the range of orders
+* Gaussianity of the residuals
+* ACF of the residuals = whitenest tests (serial and cross-correlation)
+-> Portmanteau test: Li-Mcleod
+* Others? consistency, stationarity, spectral consistency index
+
+## Validación de la interpolación MIARMA
+
+RMS, compara con varianza y si sale bien 1 bien en 5%
+* Tomar segmento más largo sin huecos
+* Introducir un hueco (de tamaño el del mayor hueco que se vaya a interpolar).
+
+Otro test -> en el dominio de frecuencias
+Test chi2,2 de parte real e imaginaria de Fourier.
+Este test puede que sea equivalente al test en el dominio del tiempo pero puede demostrar si hay inestabilidades o si es robusto.
+
+
