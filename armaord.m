@@ -17,12 +17,14 @@ function varargout = armaord(S, varargin)
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 %
-% Version: 1.1.1
+% Version: 1.1.3
 %
 % Changes: 
-% - 2 minor bugs fixed.
+% - 1 minor bug fixed.
+% - Added verbosity parameter 'verbose': 1 (default) means verbose 
+% mode, 0 is silent mode.
 %
-% Date: 09/03/2021
+% Date: 16/03/2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Information Criterion
@@ -31,6 +33,15 @@ IC = 'AICc';
 warning off all
 
 %% Preparing input data
+
+% Controls verbose: 1 (default) means verbose mode, 0 is silent mode
+iver = find(strcmp(varargin,'verbose'), 1);
+if isempty(iver),
+    verbflag = 1;
+else
+    verbflag = varargin{iver+1};
+end
+
 N = length(S);
 
 % Number of iterations for the algorithm
@@ -258,83 +269,72 @@ end
 % each pair (p,q)
 
 tee = 0;
-tic;
 
 for i=0:qmax,
-    
+    tic;    
     akam = akamat(:,1+i);
-    
-%     ir = i*r;
-    
-        for j=pmin:pmax
-            ii = j - pmin + 1;
-%             jj = 1+i;
-%             ind = ir + ii;
-%             aka = akamat(ii,jj);
-            aka = akam(ii);
-%             aka = akamat(ind);
-            if ~isnan(aka)
-                if ~isempty(iw),
-                    fprintf( fichw, '%f ', aka);
-                end
-                continue;
-            end
-            
-            try               
-                model = armax(seg, [j i], 'SearchMethod', 'lsqnonlin');
-            catch E
-                % Report the error messages to a file
-                if exist('nomfich','var'),
-                    errfich = strcat( [ nomfich(1:end-4) '_EM.htm' ] );
-                    fich = fopen(errfich,'a');
-                else
-                    fich = fopen('Error_Messages.htm','a');
-                end
-                msg = getReport(E);
-                fprintf(fich,'<br>(%d,%d) order failed<br/>',j,i);
-                fprintf(fich,'%s\n',msg);
-                fclose(fich);
-                
-                if ~isempty(iw)
-                    fprintf(fichw,'NaN ');
-                end
-                continue;
-            end
-            
-            aka = aicplus(model, IC);
-            
-            akam(ii) = aka;
-%             akamat(ii,jj) = aka;
-            
-            if ~isempty(iw)
+    nmod = 0;
+
+    for j=pmin:pmax
+        ii = j - pmin + 1;
+        aka = akam(ii);
+
+        if ~isnan(aka)
+            if ~isempty(iw),
                 fprintf( fichw, '%f ', aka);
-            end 
+            end
+            continue;
         end
-        
-        akamat(:, 1+i) = akam;
-        
+
+        try               
+            model = armax(seg, [j i], 'SearchMethod', 'lsqnonlin');
+            nmod = nmod + 1;
+        catch E
+            % Report the error messages to a file
+            if exist('nomfich','var'),
+                errfich = strcat( [ nomfich(1:end-4) '_EM.htm' ] );
+                fich = fopen(errfich,'a');
+            else
+                fich = fopen('Error_Messages.htm','a');
+            end
+            msg = getReport(E);
+            fprintf(fich,'<br>(%d,%d) order failed<br/>',j,i);
+            fprintf(fich,'%s\n',msg);
+            fclose(fich);
+
+            if ~isempty(iw)
+                fprintf(fichw,'NaN ');
+            end
+            continue;
+        end
+
+        aka = aicplus(model, IC);
+
+        akam(ii) = aka;
+
         if ~isempty(iw)
-            fprintf( fichw, '\n');
-        end
-        
-        per = 100*(i+1)/(1+qmax);
-        ee = toc;
-        tee = tee + ee;
-        fprintf(' %.f%%...  %.f s last iteration, %.f since start\n', ...
-            per, ee, tee); 
-        tic;
+            fprintf( fichw, '%f ', aka);
+        end 
+    end
+
+    akamat(:, 1+i) = akam;
+
+    if ~isempty(iw)
+        fprintf( fichw, '\n');
+    end
+
+    per = 100*(i+1)/(1+qmax);
+    ee = toc;
+    tee = tee + ee;
+    if verbflag
+        fprintf(' %.f%%...  %.f s last iteration, %.f s since start, %d models calculated\n', ...
+            per, ee, tee, nmod);
+    end
 end
 
 if ~isempty(iw),
     fclose(fichw);
 end
-
-% [cp,cq]=find(akamat==min(min(akamat)));
-% 
-% % The optimal (p,q) pair is found. In case of coincidence the lower p is
-% % the preference
-% q = cq - 1;
-% p = cp + pmin - 1;
 
 %% Optional outputs
 % This part of the code is just for test purposes
@@ -359,5 +359,3 @@ elseif nargout==5,
     varargout{4} = L;
     varargout{5} = qmax;
 end
-
-toc;
