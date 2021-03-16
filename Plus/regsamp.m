@@ -17,14 +17,13 @@ function varargout = regsamp(varargin)
 %           status, otherwise:
 %           [timeout,dataout,flagout] = regsamp(timein,datain,flagin)
 %
-% Version: 0.7
+% Version: 0.8
 % Changes: 
-%   - method is changed from 'linear' to 'pchip'.
-%   - initial time is recovered
-%   - minor fixes.
+% - Efficiency improved 1500x
+% - Requires ismemberf.m from Bruno Luong
 %
 %  Author: Javier Pascual-Granado
-%  $Date: 04/03/2021$
+%  $Date: 15/03/2021$
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Input data
@@ -53,7 +52,7 @@ dt = diff( timein );
 %% Estimate sampling
 samp = sampest(timein); % estimate of the mean global sampling
 err = samp/1000;
-ind = find((dt-samp)>err);
+ind = find((dt-samp)>err,1);
 
 if isempty(ind),
     if ischar(varargin{1}),
@@ -75,12 +74,39 @@ timeout = 0:samp:timef;
 L1 = length(timeout);
 datout = zeros(1,L1);
 flagout = ones(1,L1);
-i1 = zeros(1,L); % indexes of the nearest timeout to timein values
+% i1 = zeros(1,L); % indexes of the nearest timeout to timein values
 
-% This is highly inefficient, should be optimised in future versions.
-for i=1:L,
-    [~, i1(i)] = min( abs( timeout-timein(i) ) ); 
-end
+% These are necessary parameters for method c) and d)
+ti = samp*nearest( timein(1:L)/samp );    
+errti = 10*eps( ti(end) );
+
+% for i=1:L,
+% %     a) Simplest but least efficient way
+%     [~, i1(i)] = min( abs( timeout-timein(i) ) );
+    
+% %     b) Faster but still not so efficient
+%     iM = find(timeout>timein(i), 1);
+%     if isempty(iM)
+%         i1(i) = im;
+%         continue;
+%     else
+%         dM = abs( timeout(iM) - timein(i) );
+%         im = iM - 1;
+%         dm = abs( timeout(im) - timein(i) );
+%         if dM > dm
+%             i1(i) = im;
+%         else
+%             i1(i) = iM;
+%         end
+%     end
+
+% %  c) Simpler but not so efficient (also, check the last point)
+%     i1(i) = find( abs(timeout - ti(i))<errti, 1 );
+    
+% end
+
+% d) ~1500x faster than a)
+[~, i1] = ismemberf(ti, timeout, 'tol', errti);
 
 new_do = interp1( timein, datin, timeout(i1), 'pchip', 'extrap' );
 datout(i1) = new_do;
