@@ -48,34 +48,48 @@ function strout = MIARMA(strin)
 %                              armaint.m       
 %                              pred.m          
 %
-% Version: 0.0.1.0
+% Version: 0.0.1.1
 %
 % Changes: 
-%  - Fixed issue #35
+%  - Fixed issue #36
 %  - Minor improvements.
-%  - 1 Minor bug fixed.
-%  - Use new version of af_simp 0.3
+%  - Use armaord 1.1.3
 %
-% Date: 09/03/2021
+% Date: 169/03/2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
 
 %% Some definitions
-numvers = '0.0.1.0';
+numvers = '0.0.1.1';
 
 lgaps0 = NaN;
 Llin = NaN;
 
-% Header
-fprintf(2, '\n #############################################################\n');
-fprintf(2, ' #                                                           #\n');
-fprintf(2, ' #                    MIARMA  %s                        #\n', numvers);
-fprintf(2, ' #    by  J.Pascual-Granado, IAA-CSIC, Spain. 2020           #\n');
-fprintf(2, ' #               License GNU GPL v3.0                        #\n');
-fprintf(2, ' #                                                           #\n');
-fprintf(2, ' #############################################################\n\n');
+% Flag that controls screen output. Presently there are only two modes:
+% 'full' and 'simple'. In the future a 'minimal' mode will be implemented 
+% in order to suppress all output in screen.
+if isfield( strin.params, 'verbose')
+    verbose = strin.params.verbose;
+else
+    verbose = 'full';
+end
 
+verbflag = strcmp(verbose, 'full');
+
+if verbflag
+
+    % Header
+    fprintf(2, '\n #############################################################\n');
+    fprintf(2, ' #                                                           #\n');
+    fprintf(2, ' #                    MIARMA  %s                        #\n', numvers);
+    fprintf(2, ' #    by  J.Pascual-Granado, IAA-CSIC, Spain. 2020           #\n');
+    fprintf(2, ' #               License GNU GPL v3.0                        #\n');
+    fprintf(2, ' #                                                           #\n');
+    fprintf(2, ' #############################################################\n\n');
+
+end
+    
 %% Input data
 timein = strin.time;
 datin = strin.data;
@@ -229,7 +243,9 @@ if isfield(strin, 'igap')
 
 else        
     % Gap indexes are calculated
-    fprintf('Step 1 - Finding gap indexes\n');
+    if verbflag
+        fprintf('Step 1 - Finding gap indexes\n');
+    end
     igap = indgap(flagin);
     
     if strcmp(always_int, false)
@@ -250,7 +266,9 @@ else
     
     % Correction of the status array for small gaps
     if npi > 1
-        fprintf('Step 1b - Correction of status array for small gaps\n');
+        if verbflag
+            fprintf('Step 1b - Correction of status array for small gaps\n');
+        end
         [datout, flagin] = lincorr(datin, flagin, igap, npi);
     end
 
@@ -272,12 +290,16 @@ else
     % Correction of the status array for small data segments
     % If you want to disable this correction just set npz to zero
     if npz > 0
-        fprintf('Step 2 - Small segments correction...\n');
+        if verbflag
+            fprintf('Step 2 - Small segments correction...\n');
+        end
         flagin = sing(flagin, npz, igap);
     end
 
     % Index rebuilding
-    fprintf('Step 3 - Index rebuilding...\n');
+    if verbflag
+        fprintf('Step 3 - Index rebuilding...\n');
+    end
     igap = indgap(flagin,1);
       
     % If no gaps are found the program returns with no further calculations
@@ -349,7 +371,9 @@ else
         seg = seg(1:mseg);
     end
     
-    fprintf('Step 4 - Order estimation\n\nPlease wait...\n');
+    if verbflag
+        fprintf('Step 4 - Order estimation\n\nPlease wait...\n');
+    end
     
     % Optimal order (p,q) for the ARMA model of seg
 %     pminstr = num2str(pmin,'%03.f');
@@ -365,16 +389,33 @@ else
     if nuc == 1
         if exist( 'akaname', 'var' )
             % fileaka is just the star id or temp
-            fileaka = akaname(1:end-4);
-            aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
-                'qmax', qmax, 'w', fileaka);
-        elseif temp            
-            aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
-                'qmax', qmax, 'w' );
-        else            
-            aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
-                'qmax', qmax);            
-        end        
+%             fileaka = akaname(1:end-4);
+            if verbflag
+                aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
+                    'qmax', qmax, 'w', akaname);
+            else
+                aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
+                'qmax', qmax, 'verbose', 0, 'w', akaname);
+            end
+        
+        % Note that, armaord requires the flag 'w' is the last one used
+        elseif temp
+            if verbflag
+                aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
+                    'qmax', qmax, 'w' );
+            else
+                aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
+                'qmax', qmax, 'verbose', 0, 'w' );
+            end
+        else
+            if verbflag
+                aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
+                    'qmax', qmax);
+            else
+                aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
+                'qmax', qmax, 'verbose', 0);
+            end
+        end    
     else
         % Open a pool for parallel computation with nuc workers.       
         matlabpool(nuc);
@@ -411,9 +452,11 @@ flagout = flagin;
 
 % Number of gaps
 numgap = round(l0/2);
-fprintf('Number of gaps: %d\n', numgap);
 
 if numgap==1
+    fprintf('\n *Starting the gap-filling iterative process*\n\n');
+    fprintf('Number of gaps: %d\n', numgap);
+    
     if simpl,
         [datout, flagout] = af_simp( datout, flagout, aka, igap, params, j );
     else
@@ -423,10 +466,11 @@ if numgap==1
     igap = indgap(flagout,j+1);
     l1 = length(igap);
     numgap = round(l1/2);
-    fprintf('Number of gaps: %d\n', numgap);
+    fprintf('\nNumber of gaps remaining: %d\n', numgap);
     
 else
     fprintf('\n *Starting the gap-filling iterative process*\n\n');
+    fprintf('Number of gaps: %d\n\n', numgap);
     while numgap>1
         
         while (rep<repmax && l0>=2)
@@ -441,7 +485,7 @@ else
             if isempty(igap)
 %                 l1 = 0;
                 numgap = 0;
-                fprintf('Number of gaps: 0\n');
+                fprintf('\nNumber of gaps remaining: 0\n');
                 break;
             end
             
@@ -455,7 +499,7 @@ else
             % Number of gaps
             l1 = length(igap);
             numgap = round(l1/2);
-            fprintf('Number of gaps: %d\n\n', numgap);
+            fprintf('\nNumber of gaps remaining: %d\n\n', numgap);
             
             j = j + 1;
             
@@ -534,12 +578,12 @@ if (always_int && numgap > 0)
         
         igap = indgap(flagout, j+1);
         if isempty(igap)          
-            fprintf('Number of gaps: 0\n0');
+            fprintf('Number of gaps remaining: 0\n0');
             break;
         end
         l1 = length(igap);
         numgap = round(l1/2);
-        fprintf('Number of gaps: %d\n', numgap);
+        fprintf('Number of gaps remaining: %d\n', numgap);
         
         j = j + 1;
     end
