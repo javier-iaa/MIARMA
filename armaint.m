@@ -9,13 +9,13 @@ function [interp, go] = armaint(seg1, seg2, ord, N2)
 %               N2 - length of the gap
 % Outputs:      interp - interpolated segment
 %               go - true when the interpolation works and false otherwise
-% Version: 1.3.10
+% Version: 1.3.11
 % Changes from the last version:
 % - Minor improvements.
 %
 %  Calls: sigma_clip.m
 %  Author(s): Javier Pascual-Granado
-%  Date: 05/02/2021
+%  Date: 29/03/2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 go = true;
@@ -294,9 +294,9 @@ sigd_s2 = std(diff(seg2));
 
 if sigd_yf > fac_sig*sigd_s1 && sigd_yf > fac_sig*sigd_s2
     
-    seg1 = sigma_clip(seg1, 2);
-    seg1n = (seg1-mean(seg1))./std(seg1);
-    sig_s1 = std(seg1);
+    seg1 = sigma_clip( seg1 );
+    sig_s1 = std( seg1 );
+    seg1n = (seg1-mean(seg1))./sig_s1;
     
     % Calculate ARMA model and obtain the coeff. for the left segment
     try
@@ -334,9 +334,9 @@ end
 sigd_yb = std(diff(yback));
 
 if sigd_yb > fac_sig*sigd_s2 && sigd_yb > fac_sig*sigd_s1
-    seg2 = sigma_clip(seg2,2);
-    seg2n = (seg2-mean(seg2))./std(seg2);
+    seg2 = sigma_clip( seg2 );
     sig_s2 = std(seg2);
+    seg2n = (seg2-mean(seg2))./sig_s2;
     
     % Calculate ARMA model and obtain the coeff. for the right segment
     try
