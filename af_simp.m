@@ -30,17 +30,17 @@ function [datout,flagout] = af_simp(datin, flagin, aka, ind1, params, varargin)
 %
 % Calls:   armaint.m
 %
-% Version: 0.3.0
+% Version: 0.3.1
 %
 % Changes from the last version: 
-% - New optional input in varargin{end} activates one-sided extrapolation
-% for the cases in which no forward-backward extrapolation is possible.
-% - Minor fixes.
-% - Code is simplified and improved its legibility.
+% - Fixed bug in ln 360
+% - Fixed error evaluating control statement in ln 305
+% - An additional correction has been implemented to avoid the issues 
+% when go is false in ln 373
 % 
 % Author: Javier Pascual-Granado
 %
-% Date: 09/03/2021
+% Date: 29/03/2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 L = length(datin);
@@ -218,7 +218,10 @@ while ind1f>=0,
                 end
             end
         end      
-    end 
+    end
+    
+    lseg1 = length(seg1);
+    lseg2 = length(seg2);
     
     % number of lost datapoints in the gap
     np = ind1(2) - ind1(1) + 1;
@@ -235,8 +238,6 @@ while ind1f>=0,
     no_nan_cond = nnanc1 && nnanc2;
    
     if no_nan_cond
-        lseg1 = length(seg1);
-        lseg2 = length(seg2);
         
         % Checks whether the segment length is enough to interpolate np
         % data points in the gap
@@ -360,7 +361,7 @@ while ind1f>=0,
             seg1 = datout( subi1 );
         end
         if nnanc2
-            newi2 = len - newi1 + 1;
+            newi2 = len - floor(fac-facmax)*d;
             subi2 = subi2(1:newi2);
             seg2 = datout( subi2 );
         end
@@ -386,6 +387,25 @@ while ind1f>=0,
 %         datout = locdetrend(datout, datin, reco, reco0, seg1, seg2, interp, npint, np, ind1);
 %         datout(reco) = datin(reco);
 %     end
+
+    % If armaint could not interpolate we try with the next "optimal" order
+    % If, in any case, this results insufficient we could try in the future two
+    % solutions: a loop to find the order that makes it works, to restrict the 
+    % orders in the MA part, since this appears to be more unstable when 
+    % the q is high.
+    if ~go
+        aka(cp, cq) = nan;
+        minaka = min( min(aka) );
+        [cp, cq] = find(aka == minaka);
+        q = cq - 1;
+        p = cp + pmin - 1;
+        ord = [p q];
+        [interp, go] = armaint(seg1, seg2, ord, np);
+        if go
+            datout(ind1(1):ind1(2)) = interp;
+            flagout(ind1(1):ind1(2)) = 0;
+        end
+    end
     
     indlast = ind1(2);
     ind1(1:2)=[];
