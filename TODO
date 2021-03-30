@@ -17,4 +17,10 @@ Otro test -> en el dominio de frecuencias
 Test chi2,2 de parte real e imaginaria de Fourier.
 Este test puede que sea equivalente al test en el dominio del tiempo pero puede demostrar si hay inestabilidades o si es robusto.
 
+## New corrections
 
+* Implement the FT correction when the maximum Akaike matrix that can be explored is insufficient to produce a reliable interpolation.
+
+* Implement the difference/integration correction to avoid that the non-stationarity affects the interpolation.
+-> difference: fd(i) = f(i) - f(i-1); fd(1)=f(1)? or fd(1)=0?
+-> integration: f(i) = sum_{j=1}^{i} fd(j);
