@@ -1,3 +1,19 @@
+30-mar-21   * MIARMA 0.0.2.0
+	    - Using ft_corr optionally for a final correction of the ARMA interpolation
+	    - ft_corr substitutes lscorr
+	    
+	    * af_simp 0.3.1
+	    - Fixed bug in ln 360
+	    - Fixed error evaluating control statement in ln 305
+	    - An additional correction has been implemented to avoid the issues when go is false in ln 373
+	    
+	    * armaint 1.3.11
+	    - Minor improvements
+	    
+	    * sigma_clip 0.3
+	    - Using pchip interpolation instead of the mean
+	    - few improvements and bug fixes
+
 16-mar-21   * MIARMA 0.0.1.1
 	    - Fixed issue #36
 	    - Minor improvements.
