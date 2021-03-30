@@ -48,20 +48,18 @@ function strout = MIARMA(strin)
 %                              armaint.m       
 %                              pred.m          
 %
-% Version: 0.0.1.1
+% Version: 0.0.2.0
 %
 % Changes: 
-%  - Fixed issue #36
-%  - Minor improvements.
-%  - Use armaord 1.1.3
+%  - Using ft_corr optionally for a final correction of the ARMA interpolation
 %
-% Date: 169/03/2021
+% Date: 28/03/2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 warning off all
 
 %% Some definitions
-numvers = '0.0.1.1';
+numvers = '0.0.2.0';
 
 lgaps0 = NaN;
 Llin = NaN;
@@ -107,6 +105,7 @@ timeout = timein;
 simpl = true;
 temp = false;
 always_int = true;
+ft_corr = false;
 nuc = 1;
 mseg = 1000;
 pmin = 2;
@@ -121,6 +120,11 @@ facint = 3;
 ascii_struct = false;
 
 if isfield( strin, 'params' )
+    
+    % Flag to activate the FT correction of the arma interpolation
+    if isfield( strin.params, 'ft_corr' )
+        ft_corr = strin.params.ft_corr;
+    end
         
     % Flag to decide between af_simp.m and armafill.m
     if isfield( strin.params, 'simpl')
@@ -571,6 +575,7 @@ if (always_int && numgap > 0)
         if j>repmax
             fprintf(2, '\nWarning: interpolation finished before all gaps could be filled.');
             fprintf(2, '\nTry different values in the parameter structure (e.g. facint).\n\n');
+            ft_corr = false;
             break;
         end
         
@@ -589,12 +594,25 @@ if (always_int && numgap > 0)
     end
 end
 
+%% FT correction of the ARMA interpolation
+if ft_corr
+    datout_corr = ftcorr(datout, flagin);
+end
+
 %% Save output
 if ~ascii_struct
     % This occurs only when MIARMA is called for test purposes only
-    strout.timeout = timeout;
-    strout.datout = datout;
-    strout.statout = flagout;
+    
+    if ft_corr
+        strout.timeout = timeout;
+        strout.datout = datout;
+        strout.datout_corr = datout_corr;
+        strout.statout = flagout;
+    else
+        strout.timeout = timeout;
+        strout.datout = datout;
+        strout.statout = flagout;
+    end
     
 else
     % This is the situation in a standard call
@@ -616,9 +634,16 @@ else
     fprintf(fich,'# mseg: %d\n\n',mseg);
     fprintf(fich,'x y z\n');
     
-    for i=1:length(timeout)
-        fprintf(fich,'%16.12f %16.13f %d\n',...
-            timeout(i),datout(i),flagout(i));
+    if ft_corr
+        for i=1:length(timeout)
+            fprintf(fich,'%16.12f %16.13f %d\n',...
+                timeout(i),datout_corr(i),flagout(i));
+        end
+    else       
+        for i=1:length(timeout)
+            fprintf(fich,'%16.12f %16.13f %d\n',...
+                timeout(i),datout(i),flagout(i));
+        end
     end
     fclose(fich);
     
