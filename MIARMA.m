@@ -40,7 +40,6 @@ function strout = MIARMA(strin)
 % Dependencies:      armaord_par.m   
 %                              armaord.m       
 %                              indgap.m        
-%                              armafill.m      
 %                              lincorr.m       
 %                              sing.m
 %                              af_simp.m       
@@ -48,18 +47,33 @@ function strout = MIARMA(strin)
 %                              armaint.m       
 %                              pred.m          
 %
-% Version: 0.0.2.0
+% Version: 0.1.0.0 
 %
 % Changes: 
-%  - Using ft_corr optionally for a final correction of the ARMA interpolation
+% 
+% - FT correction is activated by af_simp.m flag ftc when something 
+% goes wrong.
 %
-% Date: 28/03/2021
+% - A new flag 'lastr_aka' is introduced in order to give a higher priority
+% to the optimal order (see af_simp.m for more details). This flag is 
+% internal, meaning that it cannot be given as input (at least by now).
+%
+% - A new flag 'reco' is introduced to decide whether the datapoints 
+% excluded during the gap-filling process will be recovered at the end.
+%
+% - Parameter simpl is removed since only af_simp.m is used now.
+%
+% - Merging is used for last solution resource too.
+%
+% - Fix: original data excluded during interpolation is now recovered.
+% 
+% - Multiple minor fixes and improvements, e.g. gap merging in extrap loop
+%
+% Date: 06/11/2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-warning off all
-
 %% Some definitions
-numvers = '0.0.2.0';
+numvers = '0.1.0.0';
 
 lgaps0 = NaN;
 Llin = NaN;
@@ -81,7 +95,7 @@ if verbflag
     fprintf(2, '\n #############################################################\n');
     fprintf(2, ' #                                                           #\n');
     fprintf(2, ' #                    MIARMA  %s                        #\n', numvers);
-    fprintf(2, ' #    by  J.Pascual-Granado, IAA-CSIC, Spain. 2020           #\n');
+    fprintf(2, ' #    by  J.Pascual-Granado, IAA-CSIC, Spain. 2021           #\n');
     fprintf(2, ' #               License GNU GPL v3.0                        #\n');
     fprintf(2, ' #                                                           #\n');
     fprintf(2, ' #############################################################\n\n');
@@ -101,71 +115,90 @@ timeout = timein;
 
 %% Parameters
 
-% default values
-simpl = true;
-temp = false;
-always_int = true;
-ft_corr = false;
-nuc = 1;
+% --- Default values for parameters if no input is given ---
+
+% Maximum length of the segment used to calculate ARMA order
 mseg = 1000;
+
+% Max. ratio between segment length and number of parameters for the model
+facmax = 6;
+
+% Min. ratio between segment length and number of parameters for the model
+facmin = 4;
+
+% Min. ratio between interpolated datapoints and the length of the segments
+facint = 3;
+
+% Number of iterations of the gap-filling loop
+repmax = 3;
+
+% Lower limit in data segment length for the ARMA interpolation.
+npz = 36;
+
+% Lower limit in gap length in order to use ARMA interpolation, below this 
+% limit a simpler interpolation is used
+npi = 4;
+
+% Decides whether to save the Akaike matrix at a temp file
+temp = false;
+
+% Always interpolate or not
+always_int = true;
+
+% Flag to activate the FT correction of the arma interpolation
+ft_corr = false;
+
+% Number of workers to used for parallelization
+nuc = 1;
+
+% Range for the search of the optimal ARMA orders [pmin,pmax] 
 pmin = 2;
 pmax = 30;
+
+% The MA order is search in the range [0,qmax]
 qmax = 30;
-repmax = 3;
-npz = 36;
-npi = 4;
-facmax = 6;
-facmin = 4;
-facint = 3;
+
+% Flag to activate (or not) ascii output with parameters and other info
 ascii_struct = false;
 
+% Flag to activate recovery of excluded data points at the end of the 
+% gap-filling process. False means that some data points will be substituted 
+% by interpolated data points in the resulting array.
+reco_flag = false;
+
+% --- Input structure that changes parameter values ---
 if isfield( strin, 'params' )
     
-    % Flag to activate the FT correction of the arma interpolation
     if isfield( strin.params, 'ft_corr' )
         ft_corr = strin.params.ft_corr;
     end
         
-    % Flag to decide between af_simp.m and armafill.m
-    if isfield( strin.params, 'simpl')
-        simpl = strin.params.simpl;
-    end
-
-    % Default values of the parameters.
-    % Min. ratio between segment length and number of parameters for
-    % the model. facmin must be >= 3
+    %  facmin must be >= 3
     if isfield( strin.params, 'facmin')
         facmin = strin.params.facmin;
     end
 
-    % Max. ratio between segment length and number of parameters for
-    % the model. facmax = 6;
     if isfield( strin.params ,'facmax')
         facmax = strin.params.facmax;
     end
 
-    % Lower limit in gap length for the ARMA interpolation
-    % (below this limit a simpler interpolation is used)
     if isfield( strin.params, 'npi')
         npi = strin.params.npi;
     end
     
-    % Lower limit in data segment length for the ARMA interpolation.
     % This must be at least d*facmin and, as min(d)=min(p+q)=pmin+0,
     % npz must be at least pmin*facmin
     if isfield( strin.params, 'npz' )
         npz = strin.params.npz;
     end
     
-    % Number of iterations of the gap-filling loop. It might be interesting 
-    % to use a number higher than 2 since sometimes the number of gaps
-    % from one iteration to the next one is the same in spite of the gaps 
-    % to fill being different.
+    % It might be interesting to use a number higher than 2 since sometimes 
+    % the number of gaps from one iteration to the next one is the same in 
+    % spite of the gaps to fill being different.
     if isfield( strin.params, 'repmax')
         repmax = strin.params.repmax;
     end
 
-    % Range for the search of the optimal ARMA orders [pmin,pmax] 
     if isfield( strin.params, 'pmin')
         pmin = strin.params.pmin;
     end
@@ -174,53 +207,48 @@ if isfield( strin, 'params' )
         pmax = strin.params.pmax;
     end
 
-    % The MA order is search in the range [0,qmax]
     if isfield( strin.params, 'qmax')
         qmax = strin.params.qmax;
     end
     
-    % Maximum length of the segment used to calculate ARMA order
     if isfield( strin.params, 'mseg')
         mseg = strin.params.mseg;
     end    
     
-    % Number of workers to used for parallelization. Default is 1 meaning
-    % no parallelization.
     if isfield( strin.params, 'nuc' )
         nuc = strin.params.nuc;
     else
         nuc = 1;
     end
 
-    % Always interpolate or not
     if isfield( strin.params, 'always_int' )
         always_int = strin.params.always_int;
     end
 
-    % Decides wheter to save the Akaike matrix at a temp file
     if isfield( strin.params, 'temp' )
         temp = strin.params.temp;
     end
         
-    % Flag to activate (or not) ascii output with parameters and other info
     if isfield(strin.params, 'ascii_struct')
         ascii_struct = strin.params.ascii_struct;
     end
 
-    % Full name for the file containing the Akaike matrix        
+    % Full name for the file containing the Akaike matrix      
     if isfield(strin.params, 'akaname')
         akaname = strin.params.akaname;
     end
     
-    % Min. ratio between interpolated datapoints and the length of the segments
     if isfield(strin.params, 'facint')
         facint = strin.params.facint;
+    end
+    
+    if isfield(strin.params, 'reco')
+        reco_flag = strin.params.reco;
     end
         
 end
 
 % Save parameters used in the computation in output structure for transparency
-strout.params.simpl = simpl;
 strout.params.temp = temp;
 strout.params.always_int = always_int;
 strout.params.nuc = nuc;
@@ -237,7 +265,7 @@ strout.params.ascii_struct = ascii_struct;
 strout.params.facint = facint;
 % strout.params.akaname = akaname;
 
-% List of parameters for armafill/af_simp
+% List of parameters for af_simp
 params = [facmin facmax npi pmin facint];
 
 %% Building the gap indexes
@@ -256,12 +284,10 @@ else
     % Gaps at the edges of the time series are eliminated
         if flagin(1)~=0
             flagin(1:igap(2)) = 0;
-    %         igap = indgap(flagin);
             igap(1:2) = [];
         end
         if flagin(end)~=0
             flagin(igap(end-1):end) = 0;
-    %         igap = indgap(flagin);
             igap(end-1:end) = [];
         end
     end
@@ -271,12 +297,13 @@ else
     % Correction of the status array for small gaps
     if npi > 1
         if verbflag
-            fprintf('Step 1b - Correction of status array for small gaps\n');
+            fprintf('Step 1b - Correction for small gaps\n');
         end
-        [datout, flagin] = lincorr(datin, flagin, igap, npi);
+        [ datout, flaglin ] = lincorr( datin, flagin, igap, npi );
     end
 
-    igap = indgap(flagin,1);
+    flagin = flaglin;
+    igap = indgap(flagin);
     if isempty(igap)
         timeout = timein;
         flagout = flagin;
@@ -304,7 +331,7 @@ else
     if verbflag
         fprintf('Step 3 - Index rebuilding...\n');
     end
-    igap = indgap(flagin,1);
+    igap = indgap(flagin);
       
     % If no gaps are found the program returns with no further calculations
     if isempty(igap)
@@ -378,12 +405,7 @@ else
     if verbflag
         fprintf('Step 4 - Order estimation\n\nPlease wait...\n');
     end
-    
-    % Optimal order (p,q) for the ARMA model of seg
-%     pminstr = num2str(pmin,'%03.f');
-%     pmaxstr = num2str(pmax,'%03.f');
-%     qmaxstr = num2str(qmax,'%03.f');
-    
+       
     % Parallel computation was implemented a long time ago and it is 
     % deprecated now. It wasn't removed since this part of the code 
     % might be ported to other languages but, due to the restrictions in 
@@ -392,8 +414,6 @@ else
     % or any other parallelized version of the code since it is old.
     if nuc == 1
         if exist( 'akaname', 'var' )
-            % fileaka is just the star id or temp
-%             fileaka = akaname(1:end-4);
             if verbflag
                 aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
                     'qmax', qmax, 'w', akaname);
@@ -449,27 +469,23 @@ end
 j = 1; % iteration-number
 rep = 0; % used for the termination condition
 
-l0 = length(igap);
-% l1 = l0-1;
+l0 = length( igap );
 
 flagout = flagin;
+datout_tmp = datout;
 
 % Number of gaps
-numgap = round(l0/2);
+numgap = l0/2;
 
 if numgap==1
     fprintf('\n *Starting the gap-filling iterative process*\n\n');
     fprintf('Number of gaps: %d\n', numgap);
     
-    if simpl,
-        [datout, flagout] = af_simp( datout, flagout, aka, igap, params, j );
-    else
-        [datout, flagout] = armafill( datout, flagout, aka, igap, params, j );
-    end
+    [datout, flagout] = af_simp( datout, flagout, aka, igap, params,1);
     
-    igap = indgap(flagout,j+1);
-    l1 = length(igap);
-    numgap = round(l1/2);
+    igap = indgap(flagout);
+    l1 = length( igap );
+    numgap = l1/2;
     fprintf('\nNumber of gaps remaining: %d\n', numgap);
     
 else
@@ -477,41 +493,135 @@ else
     fprintf('Number of gaps: %d\n\n', numgap);
     while numgap>1
         
-        while (rep<repmax && l0>=2)
-            if simpl,
-                [datout, flagout] = af_simp( datout, flagout, aka, igap, params, j );
-            else
-                [datout, flagout] = armafill( datout, flagout, aka, igap, params, j );
-            end
+        while (rep<repmax && l0>=2)            
+            [datout, flagout, ftc] = af_simp( datout, flagout, aka, igap, ...
+                params, j );
             
-            igap = indgap(flagout,j+1);
+            % Activate the FT correction with ftc flag from af_simp
+            if ftc,     ft_corr = ftc;      end
             
-            if isempty(igap)
-%                 l1 = 0;
+            igap = indgap( flagout );
+            
+            if isempty( igap )
                 numgap = 0;
                 fprintf('\nNumber of gaps remaining: 0\n');
                 break;
             end
+                       
+            % Number of gaps
+            l1 = length( igap );
+            numgap = l1/2;
+            fprintf('\nNumber of gaps remaining: %d\n\n', numgap);
             
-            % Correction of the status array for small data segments
-            % If you want to disable this correction just set npz to zero
-            if npz > 0
-                flagout = sing(flagout, npz, igap);
-                igap = indgap(flagout,1);
+            j = j + 1;
+
+            % Termination condition: the number of gaps is not repeated 
+            % more than twice in consecutive iterations
+            if l1==l0
+                rep = rep + 1;
+            else
+                rep = 0;
+                l0 = l1;
             end
             
+            % Every iteration begins from the opposite side of the series
+            if (rep<repmax && l0>=2)
+                datout = flipud( datout );
+                flagout = fliplr( flagout );
+                igap = L-igap+1;
+                igap = fliplr( igap );
+            end
+
+        end
+        
+        if mod(j,2)==0
+            datout = flipud( datout );
+            flagout = fliplr( flagout );
+            igap = L-igap+1;
+            igap = fliplr( igap );
+        end
+        
+        % If the number of gaps is still greater than 1 it will merge some
+        % of them and repeat the main loop
+        j = 1;
+        rep = 0;
+        if numgap>1
+%             flagout( flagout~=1 ) = 0;
+            fprintf( '\n *Reinicialization with gap merging*\n' );
+            numgap0 = numgap;
+            [flagout, go] = gapmerge( flagout, igap, facint );
+            if go==true
+%                 flagin( flagout==-1 ) = -1;
+                igap = indgap( flagout );
+                l0 = length( igap );
+                numgap = l0/2;
+                fprintf('\n Merged gaps: %d \n', numgap0-numgap );
+                fprintf('\nNumber of gaps remaining: %d\n\n', numgap);
+            else
+                fprintf(2,'\nMerging is not effective to fill more gaps with these parameters.\n');
+                break;
+            end
+        end
+    end
+end
+
+% Recover data segments that were taken out with sing
+% datout(flagin==-1) = datin(flagin==-1);
+flagout( flagin~=1 ) = 0;
+
+% if (exist('Llin','var'))
+%     Llin = Llin + length(find(flagout~=0));
+% end
+
+%% Last resource solution for filling gaps 
+% The optimal order condition is relaxed
+
+if numgap==1
+    fprintf( '\n *Reducing ARMA(p,q) order for the remaining gaps*\n\n' );
+    [datout, flagout, ~] = af_simp( datout, flagout, aka, igap, ...
+                params,1, 'lastr_aka', true );
+    
+    igap = indgap( flagout );
+    l1 = length( igap );
+    numgap = l1/2;
+    fprintf('\nNumber of gaps remaining: %d\n', numgap);
+    
+else
+    if numgap>1
+        fprintf( '\n *Reducing ARMA(p,q) order for the remaining gaps*\n\n' );
+    end
+    
+    while numgap>1
+        
+        while (rep<repmax && l0>=2)
+            [datout, flagout, ~] = af_simp( datout, flagout, aka, igap, ...
+                params, j, 'lastr_aka', true );
+            
+            % Activate the FT correction with ftc flag from af_simp
+            if ftc,     ft_corr = ftc;      end
+            
+            igap = indgap( flagout );
+            
+            if isempty( igap )
+                numgap = 0;
+                fprintf('\nNumber of gaps remaining: 0\n');
+                break;
+            end
+                       
             % Number of gaps
             l1 = length(igap);
-            numgap = round(l1/2);
+            numgap = l1/2;
             fprintf('\nNumber of gaps remaining: %d\n\n', numgap);
             
             j = j + 1;
             
             % Every iteration begins from the opposite side of the series
-            datout = flipud( datout );
-            flagout = fliplr( flagout );
-            igap = L-igap+1;
-            igap = fliplr( igap );
+            if (rep<repmax && l0>=2)
+                datout = flipud( datout );
+                flagout = fliplr( flagout );
+                igap = L-igap+1;
+                igap = fliplr( igap );
+            end
 
             % Termination condition: the number of gaps is not repeated 
             % more than twice in consecutive iterations
@@ -523,43 +633,28 @@ else
             end
         end
         
-        if mod(j,2)==0
-            datout = flipud( datout );
-            flagout = fliplr( flagout );
-            igap = L-igap+1;
-            igap = fliplr( igap );
-        end
-
-%         numgap = floor(l1/2);
         % If the number of gaps is still greater than 1 it will merge some
         % of them and repeat the main loop
+        j = 1; 
+        rep=0;
         if numgap>1
-            [flagout, go] = gapmerge(flagout,igap);
+%             flagout( flagout~=1 ) = 0;
+            fprintf( '\n *Reinicialization with gap merging*\n' );
+            numgap0 = numgap;
+            [flagout, go] = gapmerge( flagout, igap, facint );
             if go==true
-                fprintf('\n *Reinicialization with gap merging*\n\n');
-                flagin(flagout==-1)=-1;
-                igap = indgap(flagout,j+1);
-                rep = 0;
-                l0 = length(igap);
-%                 l1 = l0-1;
+%                 flagin( flagout==-1 ) = -1;
+                igap = indgap( flagout );
+                l0 = length( igap );
+                numgap = l0/2;
+                fprintf('\n Merged gaps: %d\n', numgap0-numgap );
+                fprintf('\nNumber of gaps remaining: %d\n\n', numgap);
             else
+                fprintf(2,'\nMerging is not effective to fill more gaps with these parameters.\n');
                 break;
             end
         end
-        j = 1;
     end
-end
-
-% if mod(j,2)==0,
-%     datout = datout(end:-1:1);
-% end
-
-% Recover data segments that were taken out with sing
-% datout(flagin==-1) = datin(flagin==-1);
-flagout(flagin==-1 | flagin==-0.5 | flagin==0.5) = 0;
-
-if (exist('Llin','var'))
-    Llin = Llin + length(find(flagout~=0));
 end
 
 %% Final iteration using one-sided extrap (if always_int is on)
@@ -567,28 +662,50 @@ end
 % <go> to False.
 
 if (always_int && numgap > 0)
-    fprintf('\n *Restarting the gap-filling iterative process with one-sided extrap*\n\n');
+    fprintf('\n *Restarting the gap-filling with one-sided extrap*\n\n');
 %     fprintf('\n *Final iteration*\n\n');
     igap = indgap(flagout);
 %     [datout, flagout] = lincorr(datout, flagout, igap, inf);
     while l1>0
         if j>repmax
-            fprintf(2, '\nWarning: interpolation finished before all gaps could be filled.');
-            fprintf(2, '\nTry different values in the parameter structure (e.g. facint).\n\n');
-            ft_corr = false;
-            break;
+            j = 1; 
+            if numgap>1
+                fprintf( '\n *Reinicialization with gap merging*\n' );
+                numgap0 = numgap;
+                [flagout, go] = gapmerge( flagout, igap, facint );
+                if go==true
+                    igap = indgap( flagout );
+                    l0 = length( igap );
+                    numgap = l0/2;
+                    fprintf('\n Merged gaps: %d\n', numgap0-numgap );
+                    fprintf('\nNumber of gaps remaining: %d\n\n', numgap);
+                else
+                    fprintf(2,'\nMerging is not effective to fill more gaps with these parameters.\n');
+                    fprintf(2, '\nWarning: interpolation finished before all gaps could be filled.');
+                    fprintf(2, ['\nTry different values in the parameter structure e.g. facint, facmin, repmax ' ...
+                ', also others like facmax or mseg if nonstationarity is suspected.\n\n']);
+                    ft_corr = false;
+                    break;
+                end
+            else
+                fprintf(2, '\nWarning: interpolation finished before all gaps could be filled.');
+                fprintf(2, ['\nTry different values in the parameter structure e.g. facint, facmin, repmax ' ...
+                ', also others like facmax or mseg if nonstationarity is suspected.\n\n']);
+                ft_corr = false;
+                break;
+            end
         end
         
         [datout, flagout] = af_simp( datout, flagout, aka, igap, params, j, '1s' );
         
-        igap = indgap(flagout, j+1);
+        igap = indgap(flagout);
         if isempty(igap)          
-            fprintf('Number of gaps remaining: 0\n0');
+            fprintf('\nNumber of gaps remaining: 0\n');
             break;
         end
         l1 = length(igap);
-        numgap = round(l1/2);
-        fprintf('Number of gaps remaining: %d\n', numgap);
+        numgap = l1/2;
+        fprintf('\nNumber of gaps remaining: %d\n\n', numgap);
         
         j = j + 1;
     end
@@ -597,6 +714,14 @@ end
 %% FT correction of the ARMA interpolation
 if ft_corr
     datout_corr = ftcorr(datout, flagin);
+end
+
+% Recover original data that was excluded during the interpolation
+if reco_flag
+    datout(flaglin==0) = datout_tmp(flaglin==0);
+    if ft_corr
+        datout_corr(flaglin==0) = datout_tmp(flaglin==0);
+    end
 end
 
 %% Save output
@@ -648,5 +773,7 @@ else
     fclose(fich);
     
     fprintf('\n  Interpolation finished successfully.  \n');
+end
+
 end
 % END
