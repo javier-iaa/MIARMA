@@ -7,17 +7,29 @@ function yi = ftcorr(y, stat, varargin)
 %
 % Inputs:       y - observational data
 %                   stat - flag to identify the gaps
-%                   varargin can be: 'win', 'conf', 'ofac', 'range' followed by the 
+%                   varargin can be: 'conf', 'ofac', 'range' followed by the 
 %                       corresponding value.
-%                       win - true to use a window, false otherwise (default)
 %                       ofac - oversampling factor for the LS computation (default = 1)
 %                       range - factor that controls the range of frequencies 
 %                           to explore, e.g. r=1 for Nyquist (default)
 %
 % Outputs:    yf - reconstructed data
 %
-% Date: 24-mar-2021
+% Version: 0.2
+% Changes:
+% - Minor fixes
+%
+% Date: 29/10/2021
 % Javier Pascual-Granado
+
+% Prepare data
+sy = size(y);
+
+if sy(2)==1
+    y = y';
+end
+
+n = length(y);
 
 %% Parameters
 
@@ -27,14 +39,6 @@ if ~isempty(range_flag)
     r = varargin{range_flag + 1};
 else
     r = 1; % Nyquist frequency
-end
-
-% Windowing sometimes improve the estimation
-win_flag = find( strcmp(varargin,'win') );
-if ~isempty(win_flag)
-    win = varargin{win_flag + 1};
-else
-    win = false;
 end
 
 % Oversampling factor for the calculation of the FFT
@@ -58,26 +62,7 @@ end
 
 % Cutoff level
 % level=a(2) ;
-level = 10;
-
-%% Prepare data
-sy = size(y);
-
-if sy(2)==1
-    y = y';
-end
-
-n = length(y);
-
-my = mean(y);
-
-% Reconstruction is sometimes a bit better with windowing
-if win
-    y = y - my;
-    window = nuttallwin(n);
-	y = y.*window';
-    y = y + my;
-end
+level = 100;
 
 %% Calculate the periodogram and estimate noise level
 
@@ -89,9 +74,8 @@ nf = ofac*n;
 fac = 1;
 
 % Calculate the DFT
-F = fac*fft(y, nf);
-aF = abs(F);
-ph = angle(F);
+F0 = fac*fft(y, nf);
+aF0 = abs(F0);
 
 % Frequencies corresponding to the DFT calculation
 % T = x(end) - x(1);
@@ -100,39 +84,39 @@ ph = angle(F);
 % wk1 = 0:df:2*fnyq;
 
 % Consider only a part of the spectrum for confidence estimation
-spec = F( 2:fix(nf/2/r) );
+spec0 = F0( 2:fix(nf/2/r) );
 
-%  The noise level is level*mean power of spectra
-noise_est = sqrt( median( spec.*conj(spec) ) );
-noise_limit = sqrt( level ) * noise_est;
+% Noise limit
+noise_est0 = sqrt( median( spec0.*conj(spec0) ) );
+noise_limit0 = sqrt( level ) * noise_est0;
 
 %% Signal extraction and clean of the amplitude spectrum
 
-% Find the highest amplitude peak
-[p, l] = findpeaks( aF, 'MINPEAKHEIGHT', noise_limit, 'MINPEAKDISTANCE', 3*ofac);
+% Find all amplitude values above the noise limit
+l = find( aF0>noise_limit0 );
+% [~, l] = findpeaks( aF0, 'MINPEAKHEIGHT', noise_limit0);
 
-if ~isempty(p)
-    F0 = F;
-    % Clean the amplitude spectrum of other components than signal
-    F(:) = 0.0;
+% Produce a new amplitude spectrum with the frequencies found
+if ~isempty(l)
+%     F(:) = 0.0;
+%     F(:) = noise_est0;
+    F = noise_est0*randn(1,nf);
     F(1) = F0(1);
-    F(l) = p.*exp( 1i*ph(l) );
-
+    F(l) = F0(l);
+else
+    yi = y;
+    fprintf(2, '\n  ft_corr didn''t find any significant component\n\n');
+    return
 end
 
 %% Inverse Fourier transform    
 Fb = ifft(F)/fac;
 yf = real(Fb);
-% yi = imag(Fb);
-
-% window correction (rescaling to the state without windowing)
-if win
-    yf = yf./window';
-end
 
 yi = y;
-nz = length( find(stat==1) );
-noi = noise_est*sqrt(pi/nf)*randn( 1, nz );
-yi(stat==1) = yf(stat==1) + noi;
+% nz = length( find(stat==1) );
+% noi = noise_est0*sqrt(pi/nf)*randn( 1, nz );
+% yi(stat==1) = yf(stat==1) + noi;
+yi(stat==1) = yf(stat==1);
 
 end
