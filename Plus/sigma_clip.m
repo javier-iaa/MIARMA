@@ -1,25 +1,28 @@
-function seg_out = sigma_clip(seg_in, varargin)
+function [ seg_out, stat_out ] = sigma_clip(seg_in, varargin)
 % function seg_out = sigma_clip(seg_in, varargin) performs a sigma clipping
 % of the input data segment seg_in with a sigma factor fac.
 % seg_in is initially detrended with a polynomial of 2nd degree.
 % The output data segment seg_out substitute values where seg_in 
 % exceed the limit with the mean of detrended segment.
 % 
-% Optional inputs are: 'fac', 'verb'
+% Optional inputs are: 'fac', 'verb', 'empty', 'time'
+% stat_out is by default a id vector but if the 'empty' flag is used clipped values 
+% are set to zeros
 %
-% Version: 0.3
+% Version: 0.4
 % Changes from the last version:
-%  - Using pchip interpolation instead of the mean
-%  - few improvements and bug fixes.
+% - empty flag to leave empty the outliers instead of interpolating them.
+% - added stat vector as output
+% - minor fixes
 %
 %  Author(s): Javier Pascual-Granado
-%  Date: 29/03/2020
+%  Date: 28/10/2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     % Verbosity flag
-    verb_flag = find( strcmp(varargin,'verb') );
+    verb_flag = find( strcmp(varargin,'verb'), 1 );
     if ~isempty(verb_flag)
-        verb = varargin{verb_flag + 1};
+        verb = true;
     else
         verb = false; % Default is off
     end
@@ -31,8 +34,14 @@ function seg_out = sigma_clip(seg_in, varargin)
     else
         fac = 2.5; % Default
     end
- 
+    
+    % leave empty flag
+    empty_flag = find( strcmp(varargin, 'empty'), 1 );
+    
     l1 = numel(seg_in);
+    
+     % status vector
+    stat_out = ones(1, l1);
     
     % Detrending
     x = 1:l1;
@@ -59,9 +68,14 @@ function seg_out = sigma_clip(seg_in, varargin)
     end
     
     % clipped datapoints
-    y = seg_det( inclip );
-    sclip = interp1( inclip, y, iclip, 'pchip');
-    seg_out( iclip ) = sclip + f( iclip );
+    if ~isempty(empty_flag)
+        seg_out( iclip ) = 0;
+        stat_out( iclip ) = 1;
+    else
+        y = seg_det( inclip );
+        sclip = interp1( inclip, y, iclip, 'pchip');
+        seg_out( iclip ) = sclip + f( iclip );
+    end
     
     % Reshaping into cols.
     seg_out = reshape(seg_out, l1, 1);
