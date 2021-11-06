@@ -1,13 +1,17 @@
-function [datout,flagout] = af_simp(datin, flagin, aka, ind1, params, varargin)
+function [datout, flagout, ftc] = af_simp(datin, flagin, aka, ind1, params, varargin)
 % function [datout,flagout] = af_simp(datin, flagin, aka, ind1, params, varargin)
 % Simplified version of armafill.m where segment length is fixed.
 %
 % af_simp fill gaps using ARMA models as predictors for the extrapolations
 %
 % Input: datin - input data array
+% 
 %           flagin - status array. The gaps must be correctly flagged.
+% 
 %           aka - Akaike coefficient matrix
+% 
 %           ind1 - gap indexes
+% 
 %           params - parameter list, is an array with these elements:
 %              facmin - min. ratio between segment length and number of 
 %                parameters for the model
@@ -15,33 +19,45 @@ function [datout,flagout] = af_simp(datin, flagin, aka, ind1, params, varargin)
 %              npi - inf. limit in gap length for the ARMA interpolation
 %                (below this limit linear interpolation is used)
 %              pmin - inf. limit por the AR order
-%              repmax - maximum number of iterations
-%              facint - min. ratio between segment length and number of 
+%              fc - min. ratio between segment length and number of 
 %                data points to interpolate inside the gap
+% 
+%           varargin{1} must be the iteration number iter
 %              
-%             optional inputs:
-%               - iteration number for internal purposes
+%             optional inputs collected in varargin:
+%              - 'lastr_aka' followed by a boolean argument
+%               activate last resource solution = models with a lower
+%               number of coefficients than the optimal model are used when
+%               there is an insufficient amount of data.
 %               - '1s' allows one-sided extrapolation when available 
 %                   data does not allow forward-backward interpolation,
 %                  otherwise (default), two-sided interpolation is used.
 %
 % Output:   datout - ARMA interpolated data series
 %                flagout - residual status array
+%                ftc - flag for FT correction
 %
 % Calls:   armaint.m
 %
-% Version: 0.3.1
+% Version: 0.4.0
 %
 % Changes from the last version: 
-% - Fixed bug in ln 360
-% - Fixed error evaluating control statement in ln 305
-% - An additional correction has been implemented to avoid the issues 
-% when go is false in ln 373
+% - ftc flag activate the FT correction when go is false
+% - lastr_aka flag activate last resource solution to use other "optimal" 
+% orders when there is an insufficient amount of data. This should be 
+% enable only once af_simp has been run with the flag disabled.
+% - 3 bugs fixed that caused some segments not corrected were used for 
+% the fitting of ARMA models during data segment selection.
+% - Minor fixes in ln 397 & 402
+% - Other minor fixes.
 % 
 % Author: Javier Pascual-Granado
 %
-% Date: 29/03/2021
+% Date: 26/10/2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Flag to activate the FT correction in case armaint fails
+ftc = false;
 
 L = length(datin);
 l0 = length(ind1);
@@ -54,10 +70,20 @@ facmin = params(1);
 facmax = params(2);
 npi = params(3);
 pmin = params(4);
-iter = varargin{1};
 fc = params(5);
-onesd = false;
-if strcmp( varargin{end}, '1s')
+iter = varargin{1};
+
+lastr_aka_flag = find( strcmp(varargin,'lastr_aka'), 1 );
+if ~isempty(lastr_aka_flag)
+    lastr_aka = varargin{lastr_aka_flag+1};
+else
+    lastr_aka = false;
+end
+
+onesd = find( strcmp(varargin,'1s'), 1 );
+if isempty( onesd )
+    onesd = false;
+else
     onesd = true;
 end
 
@@ -87,18 +113,10 @@ l1 = l0;
 %% Gap-filling process %% 
 ind1f = l0-1;
 % i = 1;
-indlast = 0;
+% indlast = 0;
 
-if nargin==5,
-    text_iter = 'Gap filling iteration 1\n     Please wait...\n';
-    fprintf(text_iter);
-    fprintf('Start');
-else
-    text_iter = sprintf('Gap filling iteration %d\n     Please wait...\n',...
-        iter);
-    fprintf(text_iter);
-    fprintf('Start');
-end
+text_iter = sprintf('Gap filling iteration %d ----        ', iter);
+fprintf(text_iter);
 
 % Here begins the gap-filling process
 while ind1f>=0,
@@ -109,21 +127,21 @@ while ind1f>=0,
             seg1 = NaN;
             subi2 = (ind1(2)+1):L;
             seg2 = datout( subi2 );
-        elseif ind1(2)==L       % Right edge
-            subi1 = 1:ind1(1)-1;
-            seg1 = datout( subi1 );
-            seg2 = NaN;
         else
-            subi1 = 1:ind1(1)-1;
+            if ind1(2)==L       % Right edge
+                subi1 = 1:ind1(1)-1;
+                seg2 = NaN;
+            else
+                subi1 = 1:ind1(1)-1;
+                subi2 = (ind1(2)+1):L;
+                seg2 = datout( subi2 );
+            end
+            nf = find( flagout( subi1 ) == 1, 1, 'last');
+            if ~isempty(nf),
+                subi1( 1:nf ) = [];
+            end
             seg1 = datout( subi1 );
-            subi2 = (ind1(2)+1):L;
-            seg2 = datout( subi2 );
         end
-%         nf = find( flagout( subi1 ) == 1, 1, 'last');
-%         if ~isempty(nf)
-%             subi1( 1:nf ) = [];
-%         end
-%         seg1 = datout( subi1 );
     else
         if ind1(1)==1          % Left edge
             seg1 = NaN;
@@ -131,15 +149,20 @@ while ind1f>=0,
             seg2 = datout( subi2 );
         elseif ind1(2)==L,    % Right edge
             seg2 = NaN;
-            subi1 = (indlast+1):(ind1(1)-1);
-%             nf = find( flagout( subi1 ) == 1, 1, 'last');
-%             if ~isempty(nf),
-%                 subi1( 1:nf ) = [];
-%             end
+            subi1 = 1:ind(1)-1;
+            nf = find( flagout( subi1 ) == 1, 1, 'last');
+            if ~isempty(nf),
+                subi1( 1:nf ) = [];
+            end
+%             subi1 = (indlast+1):(ind1(1)-1);
             seg1 = datout( subi1 );
         else           
-%             subi1 = 1:ind1(1)-1;
-            subi1 = (indlast+1):(ind1(1)-1);
+            subi1 = 1:ind1(1)-1;
+            nf = find( flagout( subi1 ) == 1, 1, 'last');
+            if ~isempty(nf),
+                subi1( 1:nf ) = [];
+            end
+%             subi1 = (indlast+1):(ind1(1)-1);
 
             if length(subi1) < 3
             % If the length of seg1 is less than 3 no ARMA model can be
@@ -171,10 +194,10 @@ while ind1f>=0,
                 end
                 
             else
-%                 nf = find( flagout( subi1 ) == 1, 1, 'last');
-%                 if ~isempty(nf),
-%                     subi1( 1:nf ) = [];
-%                 end
+                nf = find( flagout( subi1 ) == 0.5, 1, 'last' );
+                if ~isempty(nf)
+                    subi1( 1:nf ) = [];
+                end
                 seg1 = datout( subi1 );
 
                 subi2 = (ind1(2)+1):(ind1(3)-1);                
@@ -208,12 +231,11 @@ while ind1f>=0,
                         continue;
                     end
                     
-                else
-                
-%                  nf = find( flagout( subi2 ) == 1, 1, 'last');
-%                  if ~isempty(nf),
-%                      subi2( 1:nf ) = [];
-%                  end
+                else                
+                     nf = find( flagout( subi2 ) == -0.5, 1, 'last');
+                     if ~isempty(nf),
+                         subi2( 1:nf ) = [];
+                     end
                     seg2 = datout( subi2 );
                 end
             end
@@ -317,51 +339,68 @@ while ind1f>=0,
     d = sum(ord);
     fac = len / d;
     if (fac <= facmin)
-        [akar, akac] = find(aka);
         
-        % Condition for the orders to be able to interpolate
-        akaind = (akar+akac) < floor(len/facmin);
-        akared = aka( akaind );
-        
-        if isempty(akared)
-            % try the simplest ARMA model when there is only one gap
-            if ind1f == 2
-                p = 2; 
-                q = 0;
-                ord = [p q];
-                d = sum(ord);
-                fac = len / d;
-            else
-                flagout(ind1(1):ind1(2)) = 1;
-                ind1(1:2)=[];
-                l1 = length(ind1);
-                ind1f = l1-2;
+        if lastr_aka
+            [akar, akac] = find(aka);
 
-                % reinicialization
-                ord = ord1;
-                aka = aka1;
-                continue;
+            % Condition for the orders to be able to interpolate
+            akaind = (akar+akac) < floor(len/facmin);
+            akared = aka( akaind );
+
+            if isempty(akared)
+                % try the simplest ARMA model when there is only one gap
+                if ind1f == 2
+                    p = 2; 
+                    q = 0;
+                    ord = [p q];
+                    d = sum(ord);
+                    fac = len / d;
+                else
+                    flagout(ind1(1):ind1(2)) = 1;
+                    ind1(1:2)=[];
+                    l1 = length(ind1);
+                    ind1f = l1-2;
+
+                    % reinicialization
+                    ord = ord1;
+                    aka = aka1;
+                    continue;
+                end
+            else
+                minaka = min(akared);
+                [cp, cq] = find(aka == minaka);
+                q = cq - 1;
+                p = cp + pmin - 1;
+                ord = [p q];
+                if size( ord, 1)>1
+                    d = sum(ord, 2);
+                    [dmin, id] = min(d);
+                    p = ord(id,1);
+                    q = ord(id,2);
+                    ord = [p q];
+                    d = dmin;
+                else
+                    d = sum(ord);
+                end
+                fac = len / d;
             end
         else
-            minaka = min(akared);
-            [cp, cq] = find(aka == minaka);
-            q = cq - 1;
-            p = cp + pmin - 1;
-            ord = [p q];
-            d = sum(ord);
-            fac = len / d;
+            ind1(1:2)=[];
+            l1 = length(ind1);
+            ind1f = l1-2;
+            continue;
         end
     end
 
     % Too long segments are reduced by facmax for efficiency
     if (fac > facmax) && (facmax*d>fc*np),
         if nnanc1  
-            newi1 = 1 + floor(fac-facmax)*d;
+            newi1 = 1 + floor( (fac-facmax)*d );
             subi1 = subi1(newi1:end);
             seg1 = datout( subi1 );
         end
         if nnanc2
-            newi2 = len - floor(fac-facmax)*d;
+            newi2 = len - floor( (fac-facmax)*d );
             subi2 = subi2(1:newi2);
             seg2 = datout( subi2 );
         end
@@ -376,6 +415,12 @@ while ind1f>=0,
     if go
         datout(ind1(1):ind1(2)) = interp;
         flagout(ind1(1):ind1(2)) = 0;
+    else
+        ind1(1:2)=[];
+        l1 = length(ind1);
+        ind1f = l1 - 1;
+        ftc = true;
+        continue
     end
         
     % Recover data points that were taken out with sing
@@ -393,21 +438,21 @@ while ind1f>=0,
     % solutions: a loop to find the order that makes it works, to restrict the 
     % orders in the MA part, since this appears to be more unstable when 
     % the q is high.
-    if ~go
-        aka(cp, cq) = nan;
-        minaka = min( min(aka) );
-        [cp, cq] = find(aka == minaka);
-        q = cq - 1;
-        p = cp + pmin - 1;
-        ord = [p q];
-        [interp, go] = armaint(seg1, seg2, ord, np);
-        if go
-            datout(ind1(1):ind1(2)) = interp;
-            flagout(ind1(1):ind1(2)) = 0;
-        end
-    end
+%     if ~go
+%         aka(cp, cq) = nan;
+%         minaka = min( min(aka) );
+%         [cp, cq] = find(aka == minaka);
+%         q = cq - 1;
+%         p = cp + pmin - 1;
+%         ord = [p q];
+%         [interp, go] = armaint(seg1, seg2, ord, np);
+%         if go
+%             datout(ind1(1):ind1(2)) = interp;
+%             flagout(ind1(1):ind1(2)) = 0;
+%         end
+%     end
     
-    indlast = ind1(2);
+%     indlast = ind1(2);
     ind1(1:2)=[];
     
     % reinicialization
