@@ -1,21 +1,23 @@
 function [data1, flag1] = lincorr(data, flag, ind, npi)
-% function [data1,flag1] = lincorr(data,flag,ind,npi) use a linear
-% interpolation for gap-filling the smallest gaps. 
+% function [data1,flag1] = lincorr(data,flag,ind,npi) use a polynomial
+% interpolation for filling the smallest gaps in the time series.
 % Inputs:   data - time series
-%           flag - status array
-%           ind - gap indexes
-%           npi - limits the size of the gaps to be interpolated.
-% Ouputs:   data1 - time series after lin.interpolation
-%           flag1 - new status array
-% Version: 1.0.7
+%               flag - status array
+%               ind - gap indexes
+%               npi - limits the size of the gaps to be interpolated.
+%
+% Ouputs:  data1 - time series after lin.interpolation
+%                flag1 - new status array
+%
+% Version: 1.1
+%
 % Changes from the last version:
-%   - Code cleaned.
-%   - Calls polintre v0.1
-%   - Fixed issue with npint being too small.
+% - Code completely refurbished.
+% - Now using previous interpolated data points
 %
 % Calls: polintre.m
 % Author(s): Javier Pascual-Granado
-% Date: 05/03/2021
+% Date: 17/05/2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Order used for the polynomial interpolation
@@ -42,44 +44,66 @@ if isempty(ind)==1,
 end
 
 L = length(ind);
+last_gap_ind = ind(end-1);
 
-i=1;
-while i <= L-1,
-    if L==2,
-        seg1 = data1(1:(ind(1)-1));
-        seg2 = data1((ind(2)+1):end);
-    elseif i==1,
-        seg1 = data1(1:(ind(i)-1));
-        seg2 = data1((ind(i+1)+1):(ind(i+2)-1));
-    elseif i==L-1,
-        seg1 = data1((ind(L-2)+1):(ind(L-1)-1));
-        seg2 = data1((ind(L)+1):end);
-    else
-        seg1 = data1((ind(i-1)+1):(ind(i)-1));
-        seg2 = data1((ind(i+1)+1):(ind(i+2)-1));
-    end
-    
-    if isempty(seg1) || isempty(seg2),
-        i = i+2;
-        continue;
-    end
-    
-    lseg1 = length(seg1);
-    lseg2 = length(seg2);
+% Initialization
+ini_gap_ind = ind(1);
+end_gap_ind = ind(2);
+if L>2
+    next_gap_ind = ind(3);
+end
 
-    dif = ind(i+1)-ind(i)+1;
+while ini_gap_ind <= last_gap_ind
     
-    if dif <= npi,
-        if lseg1>npint
-            seg1 = seg1((lseg1-npint+1):end);
+    dif = end_gap_ind - ini_gap_ind + 1;
+    
+    if dif <= npi
+        % Select left segment
+        subi1 = 1:ini_gap_ind - 1;
+        is_gap = find( flag1(subi1)==1 );
+        if ~isempty( is_gap )
+            subi1 = subi1( is_gap(end)+1: end);
         end
-        if lseg2>npint
-            seg2 = seg2(1:npint);
+        
+        if length(subi1) > npint
+            subi1(1:end - npint) = [];
         end
+        
+        seg1 = data1( subi1 );
+        
+        % Select right segment
+        if (L==2) || (ini_gap_ind==last_gap_ind)
+            subi2 = end_gap_ind + 1:N;
+        else
+            subi2 = end_gap_ind + 1:next_gap_ind - 1;
+        end
+
+        if length(subi2) > npint
+            subi2 = subi2(1:npint);
+        end
+        
+        seg2 = data1( subi2 );
+
+        if isempty(seg1) || isempty(seg2),
+            continue;
+        end
+   
         interp = polintre (seg1, seg2, dif, ord);
-        data1(ind(i):ind(i+1)) = interp;
-        flag1(ind(i):ind(i+1)) = 0;
+        subint = ini_gap_ind:end_gap_ind;
+        data1( subint ) = interp;
+        flag1( subint ) = 0;
     end
 
-    i = i+2;
+    if (L==2) || (ini_gap_ind==last_gap_ind)
+        break;
+    else    
+        ind(1:2) = [];
+        ini_gap_ind = next_gap_ind;
+        end_gap_ind = ind(2);
+        if next_gap_ind==last_gap_ind
+            next_gap_ind = [];
+        else
+            next_gap_ind = ind(3);
+        end
+    end
 end
