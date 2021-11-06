@@ -17,14 +17,14 @@ function varargout = armaord(S, varargin)
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 %
-% Version: 1.1.3
+% Version: 1.2.0
 %
-% Changes: 
-% - 1 minor bug fixed.
-% - Added verbosity parameter 'verbose': 1 (default) means verbose 
-% mode, 0 is silent mode.
+% Changes:
+% - Unified aka files for the same segment
+% - Header included in aka files
+% - Minor bugs fixed
 %
-% Date: 16/03/2021
+% Date: 05/11/2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Information Criterion
@@ -122,26 +122,36 @@ if ~isempty(iw),
     else
         idname = 'temp';
     end
+    idname = [ idname '_' num2str(N) ];
     pminstr = num2str( pmin, '%03.f' );
     pmaxstr = num2str( pmax, '%03.f' );
     qmaxstr = num2str( qmax, '%03.f' );
-    nomfich = [idname '_' pminstr '_' pmaxstr '_' qmaxstr ext];
+    headline = [pminstr '_' pmaxstr '_' qmaxstr '\n' ]; % Header info for aka file
+    nomfich = [idname ext];
     
     % Look for aka files, get the parameters and load akamat
-    d = dir([idname '*' ext]);
-    nd = length(d);
-%     d = dir(['temp_*_*' ext]);
-    pmax0 = zeros(1,nd);
-    pmin0 = zeros(1,nd);
-    qmax0 = zeros(1,nd);
+    d = dir( nomfich );
+      
+    if ~isempty(d)
+        fichr = fopen(nomfich,'r');
+        k=1;
+        l = fgetl(fichr);
+        while ~isempty(l)
+            f{k} = l;
+            k=k+1;
+            l = fgetl(fichr);
+        end
+        fclose(fichr);
+        nf = length(f);
+        pmax0 = zeros(1,nf);
+        pmin0 = zeros(1,nf);
+        qmax0 = zeros(1,nf);
     
-    if ~isempty(d),
-        for k=1:length(d)
-            lst_cells = regexp( d(k).name, '_', 'split');
+        for k=1:nf
+            lst_cells = regexp( f{k}, '_', 'split');
             pmin0(k) = str2num( lst_cells{end-2} );
             pmax0(k) = str2num( lst_cells{end-1} );
-            cell_qmax= regexp( lst_cells{end}, '\.', 'split');
-            qmax0(k) = str2num( cell_qmax{1} );
+            qmax0(k) = str2num( lst_cells{end} );
         end
         
         % Select the file with highest pmax, then lowest pmin, the highest 
@@ -154,14 +164,9 @@ if ~isempty(iw),
         pmax0 = pmx0;
         pmin0 = pmn0;
         qmax0 = qmx0;
-        
-        pmin0str = num2str( pmin0, '%03.f' );
-        pmax0str = num2str( pmax0, '%03.f' );
-        qmax0str = num2str( qmax0, '%03.f' );
-        akaname = [ idname '_' pmin0str '_' pmax0str '_' qmax0str ext ];
-        
-        fprintf(' Found Akaike file %s\n', akaname);
-        akamat0 = dlmread( akaname );
+               
+        fprintf(' Found Akaike file %s\n', nomfich);
+        akamat0 = dlmread( nomfich, '', nf+1, 0 );
         akamat0 = akamat0';
               
         if ( pmin >= pmin0 )
@@ -198,7 +203,7 @@ if ~isempty(iw),
                     ii0 = pmin - 1;
                     je0 = qmax + 1;
                     akamat(1:ie ,:) = akamat0( ii0:end, 1:je0);
-                    nsav = ie*qmax;
+                    nsav = ie*(qmax+1);
                 else
                     % Case i)
                     % Coeffs. in subset ie x je are read from akamat0
@@ -257,11 +262,20 @@ if ~isempty(iw),
                 end
             end
         end
+        
     end
     
     ncal = nmod - nsav;
     fprintf(' %d models loaded, %d need to be calculated.\n\n', nsav, ncal);
     fichw = fopen(nomfich, 'w');
+    
+    % Write header lines
+     if ~isempty(d)
+         for k=1:nf
+             fprintf(fichw, [ f{k} '\n' ]);
+         end
+     end
+    fprintf(fichw, [headline '\n']);
 end
 
 %% Main loop
