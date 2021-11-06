@@ -9,13 +9,14 @@ function [interp, go] = armaint(seg1, seg2, ord, N2)
 %               N2 - length of the gap
 % Outputs:      interp - interpolated segment
 %               go - true when the interpolation works and false otherwise
-% Version: 1.3.11
+% Version: 1.4.0
 % Changes from the last version:
-% - Minor improvements.
+% - Implemented a new check for goodness of fitting of models
+% - Focus changed to 'Stability' and SearcMethod to 'lm'
 %
 %  Calls: sigma_clip.m
 %  Author(s): Javier Pascual-Granado
-%  Date: 29/03/2021
+%  Date: 25/10/2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 go = true;
@@ -25,13 +26,16 @@ msg = [];
 % Coefficient used to detect if the extrapolation explodes
 fac_sig = 5;
 
+% Limit in goodness of fitting of models to continue with extrap
+lim_gf = 80;
+
 %% Algorithm properties
 % Zstability: Specifies the maximum distance of all poles 
 % from the origin to test stability of discrete-time models. 
 % A model is considered stable if all poles are within the 
 % distance Zstability from the origin. Default is 1+sqrt(eps)
 stab = 1+sqrt(eps);
-myalg.Focus = 'Prediction'; % Prediction, Simulation or Stability
+myalg.Focus = 'Stability'; % Prediction, Simulation or Stability
 myalg.MaxIter = 20;
 % myalg.Tolerance = 0.0100; % default value
 myalg.Tolerance = 0.05;
@@ -40,7 +44,7 @@ myalg.LimitError = 0; % Specifies when to adjust the weight of large errors
 % times the estimated standard deviation have a linear weight in the criteria.
 myalg.MaxSize = 'Auto'; % data is split into segments where each contains fewer than MaxSize elements.
 % myalg.SearchMethod = 'Auto';
-myalg.SearchMethod = 'lsqnonlin'; % options are gn, gna, lm, Auto, lsqnonlin
+myalg.SearchMethod = 'lm'; % options are gn, gna, lm, Auto, lsqnonlin
 myalg.Criterion = 'Det';    % Det or Trace
 myalg.Weighting = 1;
 myalg.FixedParameter = [];
@@ -292,7 +296,10 @@ sigd_yf = std(diff(yfor));
 sigd_s1 = std(diff(seg1));
 sigd_s2 = std(diff(seg2));
 
-if sigd_yf > fac_sig*sigd_s1 && sigd_yf > fac_sig*sigd_s2
+% Goodness of fitting for left model
+[~,g1,~] = compare(data1, model1, N2+1);
+
+if sigd_yf > fac_sig*sigd_s1 && sigd_yf > fac_sig*sigd_s2 && g1<lim_gf
     
     seg1 = sigma_clip( seg1 );
     sig_s1 = std( seg1 );
@@ -318,8 +325,9 @@ if sigd_yf > fac_sig*sigd_s1 && sigd_yf > fac_sig*sigd_s2
     
     sigd_yf = std(diff(yfor));
     sigd_s1 = std(diff(seg1));
+    [~,g1,~] = compare(data1, model1, N2+1);
     
-    if sigd_yf > fac_sig*sigd_s1 && sigd_yf > fac_sig*sigd_s2
+    if sigd_yf > fac_sig*sigd_s1 && sigd_yf > fac_sig*sigd_s2 && g1<lim_gf
 %         yfor = yfor.*(sig_s1/sig_yf);
        interp = NaN(1,N2);
        go = false;
@@ -332,8 +340,9 @@ end
 % the extrapolations are unstable.
 
 sigd_yb = std(diff(yback));
+[~,g2,~] = compare(data2, model2, N2+1);
 
-if sigd_yb > fac_sig*sigd_s2 && sigd_yb > fac_sig*sigd_s1
+if sigd_yb > fac_sig*sigd_s2 && sigd_yb > fac_sig*sigd_s1 && g2<lim_gf
     seg2 = sigma_clip( seg2 );
     sig_s2 = std(seg2);
     seg2n = (seg2-mean(seg2))./sig_s2;
@@ -359,8 +368,9 @@ if sigd_yb > fac_sig*sigd_s2 && sigd_yb > fac_sig*sigd_s1
     
     sigd_yb = std(diff(yback));
     sigd_s2 = std(diff(seg2));
+    [~,g2,~] = compare(data2, model2, N2+1);
     
-    if sigd_yb > fac_sig*sigd_s2 && sigd_yb > fac_sig*sigd_s1
+    if sigd_yb > fac_sig*sigd_s2 && sigd_yb > fac_sig*sigd_s1 && g2<lim_gf
 %         yback = yback.*(sig_s2/sig_yb);
         interp = NaN(1,N2);
         go = false;
