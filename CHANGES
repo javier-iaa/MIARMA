@@ -1,3 +1,53 @@
+06-nov-21   * MIARMA 0.1.0.0
+            - FT correction is activated by af_simp.m flag ftc when something goes wrong.
+            - A new flag 'lastr_aka' is introduced in order to give a higher priority to the optimal order (see af_simp.m for more details). This flag is % internal, meaning that it cannot be given as input (at least by now).
+            - A new flag 'reco' is introduced to decide whether the datapoints excluded during the gap-filling process will be recovered at the end.
+            - Parameter simpl is removed since only af_simp.m is used now.
+            - Merging is used for last solution resource too.
+            - Fix: original data excluded during interpolation is now recovered.
+            - Multiple minor fixes and improvements, e.g. gap merging in extrap loop
+
+            * lincorr 1.1
+            - Code completely refurbished.
+            - Now using previous interpolated data points
+
+            * indgap 1.0.5
+	    - Minor changes.
+
+            * gapmerge 0.1
+	    - Ln 84 commented
+            - Minor corrections and code cleaning
+
+            * armaord 1.2.0
+	    - Unified aka files for the same segment
+	    - Header included in aka files
+	    - Minor bugs fixed
+
+	    * armaint 1.4.0
+	    - Implemented a new check for goodness of fitting of models
+	    - Focus changed to 'Stability' and SearcMethod to 'lm'
+
+	    * af_simp 0.4.0
+	    - ftc flag activate the FT correction when go is false
+	    - lastr_aka flag activate last resource solution to use other "optimal" orders when there is an insufficient amount of data. This should be  enable only once af_simp has been run with the flag disabled.
+	    - 3 bugs fixed that caused some segments not corrected were used for the fitting of ARMA models during data segment selection.
+	    - Minor fixes in ln 397 & 402
+	    - Other minor fixes.
+
+	    * sigma_clip 0.4.0
+	    - empty flag to leave empty the outliers instead of interpolating them.
+	    - added stat vector as output
+	    - minor fixes
+
+	    * regsamp 0.8.1
+	    - Minor changes.
+
+	    * ftcorr 0.2
+	    - Minor fixes.
+
+	    * validate_arma 0.1
+	    - First version of the validation subroutine introduced in MIARMA 0.1.0.0. In order to perform the diagnostics a single gap is introduced in the middle of the time series and armaint.m is used to interpolate. Then, several statistics are used to compare between original and interpolated data.
+
 30-mar-21   * MIARMA 0.0.2.0
 	    - Using ft_corr optionally for a final correction of the ARMA interpolation
 	    - ft_corr substitutes lscorr

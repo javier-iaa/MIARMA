@@ -3,24 +3,21 @@ It interpolates datapoints in a gapped time series using ARMA models to predict 
 
 # Input
 The input can be:
-MIARMA(filename)
+MIARMA(<filename>)
 - a filename of an ASCII file containing three columns: first one is the time, second one is the data and the last one is the status of each datapoint.
-MIARMA(filename, param)
-- second input param is the parameter filename containing the list of parameters to be set (one for each row) and their corresponding values separated by a single space.
+- Optionally a second input is the name of a file that contains a list of parameters to be set (one for each row) and their corresponding values separated by a single space
+MIARMA(<filename>, <param>)
 
-Alternatively, you can pass MIARMA a data structure strdata that you have already loaded:
+Alternatively, a data structure <strdata> can be passed inside Matlab environment:
 MIARMA(strdata)
 The data structure should contain the following fields:
-
 strdata.time
 strdata.data
 strdata.stat
 
-which are obviously time, data and status, and then a parameter struct params with several additional fields:
-
-strdata.params.simpl : Flag to switch between subroutines af_simp.m (True - default) and armafill.m (False). See below for more information regarding these subroutines.
-strdata.params.temp : Flag to decide to save the Akaike matrix at a temp file (False - default).
-strdata.params.facmin : Min. ratio between segment length and number of parameters for the model. facmin must be at least = 3 (default is 4). 
+which are the time, data and status arrays, and a nested structure params with several additional fields:
+strdata.params.temp : boolean to turn on/off the saving of Akaike matrix in a temp file (false - default).
+strdata.params.facmin : Min. ratio between segment length and number of parameters for the model. facmin must be at least = 3 (default is 4).
 strdata.params.facmax :  Max. ratio between segment length and number of parameters for the model (default is 6).
 strdata.params.npi : Lower limit in gap length for the ARMA interpolation. Below this limit linear interpolation is used (default is 6).
 strdata.params.npz : Lower limit in data segment length for the ARMA interpolation. It must be at least d*facmin (though it can be higher for more realistic models), that is, pmin*facmin since d = p+q, min(d) = min(p+q) = pmin+0 = pmin. (default is 8).
