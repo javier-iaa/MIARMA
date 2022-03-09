@@ -45,35 +45,26 @@ function strout = MIARMA(strin)
 %                              af_simp.m       
 %                              polintre.m
 %                              armaint.m       
-%                              pred.m          
+%                              pred.m
+%                              autoarmaord.m
 %
-% Version: 0.1.0.0 
+% Version: 0.1.1.0
 %
 % Changes: 
-% 
-% - FT correction is activated by af_simp.m flag ftc when something 
-% goes wrong.
+% - Multiple minor improvements and fixes
+% - Warning messages and more info is printed
+% - Segment used in armaord is saved now in strout.segord
+% - cutoff_level parameter for the FT correction.
+% - Warning when facmax makes that a too high number of datapoints are modeled.
+% - nuc parameter is removed.
+% - New auto_flag parameter for automatic search of optimal order through
+% autoarmaord subroutine.
 %
-% - A new flag 'lastr_aka' is introduced in order to give a higher priority
-% to the optimal order (see af_simp.m for more details). This flag is 
-% internal, meaning that it cannot be given as input (at least by now).
-%
-% - A new flag 'reco' is introduced to decide whether the datapoints 
-% excluded during the gap-filling process will be recovered at the end.
-%
-% - Parameter simpl is removed since only af_simp.m is used now.
-%
-% - Merging is used for last solution resource too.
-%
-% - Fix: original data excluded during interpolation is now recovered.
-% 
-% - Multiple minor fixes and improvements, e.g. gap merging in extrap loop
-%
-% Date: 06/11/2021
+% Date: 18/2/2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Some definitions
-numvers = '0.1.0.0';
+numvers = '0.1.1.0';
 
 lgaps0 = NaN;
 Llin = NaN;
@@ -92,26 +83,29 @@ verbflag = strcmp(verbose, 'full');
 if verbflag
 
     % Header
-    fprintf(2, '\n #############################################################\n');
-    fprintf(2, ' #                                                           #\n');
-    fprintf(2, ' #                    MIARMA  %s                        #\n', numvers);
-    fprintf(2, ' #    by  J.Pascual-Granado, IAA-CSIC, Spain. 2021           #\n');
-    fprintf(2, ' #               License GNU GPL v3.0                        #\n');
-    fprintf(2, ' #                                                           #\n');
-    fprintf(2, ' #############################################################\n\n');
+    fprintf(2, '\n #########################################################\n');
+    fprintf(2, ' #                                                                                                                            #\n');
+    fprintf(2, ' #                                        MIARMA  %s                                                            #\n', numvers);
+    fprintf(2, ' #                      by  J.Pascual-Granado, IAA-CSIC, Spain. 2021                                    #\n');
+    fprintf(2, ' #                                   License GNU GPL v3.0                                                          #\n');
+    fprintf(2, ' #                                                                                                                            #\n');
+    fprintf(2, ' #########################################################\n\n');
 
 end
+
+warning_m1 = [ '\nWarning: interpolation finished before all gaps could be filled.' ...
+                '\nTry different values in the parameter structure e.g. facint, facmin, npi, repmax' ...
+                ', also others like facmax or mseg if nonstationarity is suspected.\n\n'];
     
 %% Input data
-timein = strin.time;
+time = strin.time;
 datin = strin.data;
 flagin = strin.stat;
 
 L = length(datin);
 
-% Output variables
+% Output data
 datout = datin;
-timeout = timein;
 
 %% Parameters
 
@@ -148,9 +142,6 @@ always_int = true;
 % Flag to activate the FT correction of the arma interpolation
 ft_corr = false;
 
-% Number of workers to used for parallelization
-nuc = 1;
-
 % Range for the search of the optimal ARMA orders [pmin,pmax] 
 pmin = 2;
 pmax = 30;
@@ -166,6 +157,16 @@ ascii_struct = false;
 % by interpolated data points in the resulting array.
 reco_flag = false;
 
+% Parameter that set the cutoff level to extract significant frequencies with the FFT
+% that are used for FT correction in ft_corr subroutine
+cutoff_level = 100;
+
+% Parameter flag that is used to activate the automatic search of the
+% optimal order in armaord by using an incremental Akaike matrix.
+% auto_flag is deactivated if any of pmin, pmax, qmax are also given as
+% input. If true autoarmaord.m is used instead of armaord.m
+auto_flag = true;
+
 % --- Input structure that changes parameter values ---
 if isfield( strin, 'params' )
     
@@ -176,6 +177,9 @@ if isfield( strin, 'params' )
     %  facmin must be >= 3
     if isfield( strin.params, 'facmin')
         facmin = strin.params.facmin;
+        if facmin < 3
+            fprintf(2,' Warning: facmin < 3   This cannot go well!\n\n');
+        end
     end
 
     if isfield( strin.params ,'facmax')
@@ -201,26 +205,23 @@ if isfield( strin, 'params' )
 
     if isfield( strin.params, 'pmin')
         pmin = strin.params.pmin;
+        auto_flag = false;
     end
 
     if isfield( strin.params, 'pmax')
         pmax = strin.params.pmax;
+        auto_flag = false;
     end
 
     if isfield( strin.params, 'qmax')
         qmax = strin.params.qmax;
+        auto_flag = false;
     end
     
     if isfield( strin.params, 'mseg')
         mseg = strin.params.mseg;
     end    
     
-    if isfield( strin.params, 'nuc' )
-        nuc = strin.params.nuc;
-    else
-        nuc = 1;
-    end
-
     if isfield( strin.params, 'always_int' )
         always_int = strin.params.always_int;
     end
@@ -245,13 +246,16 @@ if isfield( strin, 'params' )
     if isfield(strin.params, 'reco')
         reco_flag = strin.params.reco;
     end
-        
+     
+    if isfield(strin.params, 'cutoff')
+        cutoff_level = strin.params.cutoff;
+    end
+    
 end
 
 % Save parameters used in the computation in output structure for transparency
 strout.params.temp = temp;
 strout.params.always_int = always_int;
-strout.params.nuc = nuc;
 strout.params.mseg = mseg;
 strout.params.pmin = pmin;
 strout.params.pmax = pmax;
@@ -274,7 +278,7 @@ if isfield(strin, 'igap')
     igap = strin.igap;
 
 else        
-    % Gap indexes are calculated
+    % Gap indexes are calculated (first and last inside the gap)
     if verbflag
         fprintf('Step 1 - Finding gap indexes\n');
     end
@@ -305,9 +309,8 @@ else
     flagin = flaglin;
     igap = indgap(flagin);
     if isempty(igap)
-        timeout = timein;
         flagout = flagin;
-        strout.timeout = timeout;
+        strout.timeout = time;
         strout.datout = datout;
         strout.statout = flagout;
         strout.igap = igap;
@@ -335,7 +338,6 @@ else
       
     % If no gaps are found the program returns with no further calculations
     if isempty(igap)
-        timeout = timein;
         flagout = flagin;
 
         if ascii_struct
@@ -360,11 +362,11 @@ else
    
             for i=1:L
                 fprintf(fich,'%16.12f %16.13f %d\n',...
-                    timeout(i), datout(i), flagout(i));
+                    time(i), datout(i), flagout(i));
             end
             fclose(fich);
         else
-            strout.timeout = timeout;
+            strout.timeout = time;
             strout.datout = datout;
             strout.statout = flagout;
             strout.igap = igap;
@@ -403,25 +405,20 @@ else
     end
     
     if verbflag
-        fprintf('Step 4 - Order estimation\n\nPlease wait...\n');
+        fprintf('Step 4 - Order estimation\n\nPlease wait...\n\n');
+        fprintf('%d datapoints used for the grid of ARMA models\n',length(seg));
     end
-       
-    % Parallel computation was implemented a long time ago and it is 
-    % deprecated now. It wasn't removed since this part of the code 
-    % might be ported to other languages but, due to the restrictions in 
-    % the standard version of Matlab it is not interesting to support its 
-    % development here any more. So be careful when using armaord_par 
-    % or any other parallelized version of the code since it is old.
-    if nuc == 1
+    
+    if ~auto_flag      
         if exist( 'akaname', 'var' )
             if verbflag
                 aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
                     'qmax', qmax, 'w', akaname);
             else
                 aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
-                'qmax', qmax, 'verbose', 0, 'w', akaname);
+                'qmax', qmax, 'verbose', false, 'w', akaname);
             end
-        
+
         % Note that, armaord requires the flag 'w' is the last one used
         elseif temp
             if verbflag
@@ -429,7 +426,7 @@ else
                     'qmax', qmax, 'w' );
             else
                 aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
-                'qmax', qmax, 'verbose', 0, 'w' );
+                'qmax', qmax, 'verbose', false, 'w' );
             end
         else
             if verbflag
@@ -437,13 +434,30 @@ else
                     'qmax', qmax);
             else
                 aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
-                'qmax', qmax, 'verbose', 0);
+                'qmax', qmax, 'verbose', false);
             end
-        end    
+        end
+        
     else
-        % Open a pool for parallel computation with nuc workers.       
-        matlabpool(nuc);
-        aka = armaord_par(seg, 'pmin', pmin, 'pmax', pmax);
+        if exist('akaname', 'var')
+            if verbflag
+                aka = autoarmaord( seg, 'w', akaname);
+            else
+                aka = autoarmaord( seg, 'verbose', false, 'w', akaname);
+            end
+        elseif temp
+            if verbflag
+                aka = autoarmaord( seg, 'w' );
+            else
+                aka = autoarmaord( seg, 'verbose', false, 'w');
+            end
+        else
+            if verbflag
+                aka = autoarmaord( seg );
+            else
+                aka = autoarmaord( seg, 'verbose', false );
+            end
+        end
     end
 end
 
@@ -458,10 +472,18 @@ fprintf('\nOptimal order: [%d %d]\n\n', p, q);
 if ~ascii_struct
     strout.aka = aka;
     strout.igap = igap;
-    strout.timeout = timeout;
+    strout.timeout = time;
     strout.datout = datout;
     strout.statout = flagin;
     strout.ord = [p q];
+    strout.segord = seg;
+end
+
+pred_lim = 4000;
+faclim = floor( pred_lim/(p+q) );
+
+if facmax>faclim
+    fprintf(2,'\nWarning: facmax greater than %d might produce issues\n\n', faclim);
 end
 
 %% ARMA filling iterations
@@ -478,7 +500,7 @@ datout_tmp = datout;
 numgap = l0/2;
 
 if numgap==1
-    fprintf('\n *Starting the gap-filling iterative process*\n\n');
+    fprintf('**Starting the gap-filling iterative process**\n\n');
     fprintf('Number of gaps: %d\n', numgap);
     
     [datout, flagout] = af_simp( datout, flagout, aka, igap, params,1);
@@ -489,8 +511,8 @@ if numgap==1
     fprintf('\nNumber of gaps remaining: %d\n', numgap);
     
 else
-    fprintf('\n *Starting the gap-filling iterative process*\n\n');
-    fprintf('Number of gaps: %d\n\n', numgap);
+    fprintf('**Starting the gap-filling iterative process**\n\n');
+    fprintf('Total number of gaps: %d\n\n', numgap);
     while numgap>1
         
         while (rep<repmax && l0>=2)            
@@ -504,14 +526,14 @@ else
             
             if isempty( igap )
                 numgap = 0;
-                fprintf('\nNumber of gaps remaining: 0\n');
+                fprintf('\nNumber of gaps: 0\n');
                 break;
             end
                        
             % Number of gaps
             l1 = length( igap );
             numgap = l1/2;
-            fprintf('\nNumber of gaps remaining: %d\n\n', numgap);
+            fprintf('\nNumber of gaps: %d\n\n', numgap);
             
             j = j + 1;
 
@@ -528,16 +550,16 @@ else
             if (rep<repmax && l0>=2)
                 datout = flipud( datout );
                 flagout = fliplr( flagout );
-                igap = L-igap+1;
+                igap = L - igap + 1;
                 igap = fliplr( igap );
             end
 
         end
         
-        if mod(j,2)==0
+        if mod(j,2)==1 && j>1
             datout = flipud( datout );
             flagout = fliplr( flagout );
-            igap = L-igap+1;
+            igap = L - igap + 1;
             igap = fliplr( igap );
         end
         
@@ -547,7 +569,7 @@ else
         rep = 0;
         if numgap>1
 %             flagout( flagout~=1 ) = 0;
-            fprintf( '\n *Reinicialization with gap merging*\n' );
+            fprintf( '\n**Reinicialization with gap merging**\n' );
             numgap0 = numgap;
             [flagout, go] = gapmerge( flagout, igap, facint );
             if go==true
@@ -555,8 +577,8 @@ else
                 igap = indgap( flagout );
                 l0 = length( igap );
                 numgap = l0/2;
-                fprintf('\n Merged gaps: %d \n', numgap0-numgap );
-                fprintf('\nNumber of gaps remaining: %d\n\n', numgap);
+                fprintf('\nMerged gaps: %d\n', numgap0-numgap );
+                fprintf('\nNumber of gaps: %d\n\n', numgap);
             else
                 fprintf(2,'\nMerging is not effective to fill more gaps with these parameters.\n');
                 break;
@@ -568,16 +590,16 @@ end
 % Recover data segments that were taken out with sing
 % datout(flagin==-1) = datin(flagin==-1);
 flagout( flagin~=1 ) = 0;
+igap = indgap( flagout );
 
 % if (exist('Llin','var'))
 %     Llin = Llin + length(find(flagout~=0));
 % end
 
-%% Last resource solution for filling gaps 
-% The optimal order condition is relaxed
+%% The optimal order condition is relaxed
 
 if numgap==1
-    fprintf( '\n *Reducing ARMA(p,q) order for the remaining gaps*\n\n' );
+    fprintf( '\n**Reducing ARMA(p,q) order for the remaining gaps**\n\n' );
     [datout, flagout, ~] = af_simp( datout, flagout, aka, igap, ...
                 params,1, 'lastr_aka', true );
     
@@ -588,7 +610,7 @@ if numgap==1
     
 else
     if numgap>1
-        fprintf( '\n *Reducing ARMA(p,q) order for the remaining gaps*\n\n' );
+        fprintf( '\n**Reducing ARMA(p,q) order for the remaining gaps**\n\n' );
     end
     
     while numgap>1
@@ -604,33 +626,41 @@ else
             
             if isempty( igap )
                 numgap = 0;
-                fprintf('\nNumber of gaps remaining: 0\n');
+                fprintf('\nNumber of gaps: 0\n');
                 break;
             end
                        
             % Number of gaps
             l1 = length(igap);
             numgap = l1/2;
-            fprintf('\nNumber of gaps remaining: %d\n\n', numgap);
+            fprintf('\nNumber of gaps: %d\n\n', numgap);
             
             j = j + 1;
+            
+            % Termination condition: the number of gaps is not repeated 
+            % more than twice in consecutive iterations
+            if l1==l0
+                rep = rep + 1;
+            else
+                rep = 0;
+                l0 = l1;
+            end
             
             % Every iteration begins from the opposite side of the series
             if (rep<repmax && l0>=2)
                 datout = flipud( datout );
                 flagout = fliplr( flagout );
-                igap = L-igap+1;
+                igap = L - igap + 1;
                 igap = fliplr( igap );
             end
+            
+        end
 
-            % Termination condition: the number of gaps is not repeated 
-            % more than twice in consecutive iterations
-            if l1~=l0
-                rep = 0;
-                l0 = l1;
-            else
-                rep = rep+1;
-            end
+        if mod(j,2)==1 && j>1
+            datout = flipud( datout );
+            flagout = fliplr( flagout );
+            igap = L - igap + 1;
+            igap = fliplr( igap );
         end
         
         % If the number of gaps is still greater than 1 it will merge some
@@ -639,7 +669,7 @@ else
         rep=0;
         if numgap>1
 %             flagout( flagout~=1 ) = 0;
-            fprintf( '\n *Reinicialization with gap merging*\n' );
+            fprintf( '\n**Reinicialization with gap merging**\n' );
             numgap0 = numgap;
             [flagout, go] = gapmerge( flagout, igap, facint );
             if go==true
@@ -657,17 +687,17 @@ else
     end
 end
 
-%% Final iteration using one-sided extrap (if always_int is on)
+%% One-sided extrap is activated (if always_int is on)
 % Fill gaps left previously due to any issue in armaint that set the flag 
 % <go> to False.
 
 if (always_int && numgap > 0)
-    fprintf('\n *Restarting the gap-filling with one-sided extrap*\n\n');
-%     fprintf('\n *Final iteration*\n\n');
+    fprintf('\n**Restarting the gap-filling with one-sided extrap**\n\n');
     igap = indgap(flagout);
-%     [datout, flagout] = lincorr(datout, flagout, igap, inf);
-    while l1>0
-        if j>repmax
+
+    while l0>0
+        if rep>repmax
+            rep = 0;
             j = 1; 
             if numgap>1
                 fprintf( '\n *Reinicialization with gap merging*\n' );
@@ -681,17 +711,13 @@ if (always_int && numgap > 0)
                     fprintf('\nNumber of gaps remaining: %d\n\n', numgap);
                 else
                     fprintf(2,'\nMerging is not effective to fill more gaps with these parameters.\n');
-                    fprintf(2, '\nWarning: interpolation finished before all gaps could be filled.');
-                    fprintf(2, ['\nTry different values in the parameter structure e.g. facint, facmin, repmax ' ...
-                ', also others like facmax or mseg if nonstationarity is suspected.\n\n']);
-                    ft_corr = false;
+%                     fprintf(2, warning_m1);
+%                     ft_corr = false;
                     break;
                 end
             else
-                fprintf(2, '\nWarning: interpolation finished before all gaps could be filled.');
-                fprintf(2, ['\nTry different values in the parameter structure e.g. facint, facmin, repmax ' ...
-                ', also others like facmax or mseg if nonstationarity is suspected.\n\n']);
-                ft_corr = false;
+%                 fprintf(2, warning_m1);
+%                 ft_corr = false;
                 break;
             end
         end
@@ -699,21 +725,140 @@ if (always_int && numgap > 0)
         [datout, flagout] = af_simp( datout, flagout, aka, igap, params, j, '1s' );
         
         igap = indgap(flagout);
-        if isempty(igap)          
-            fprintf('\nNumber of gaps remaining: 0\n');
-            break;
-        end
         l1 = length(igap);
         numgap = l1/2;
-        fprintf('\nNumber of gaps remaining: %d\n\n', numgap);
+        if isempty(igap)          
+            fprintf('\nNumber of gaps: 0\n');
+            break;
+        end
+        fprintf('\nNumber of gaps: %d\n\n', numgap);
         
         j = j + 1;
+        
+        % Termination condition: the number of gaps is not repeated 
+        % more than twice in consecutive iterations
+        if l1==l0
+            rep = rep + 1;
+        else
+            rep = 0;
+            l0 = l1;
+        end
+    end
+end
+
+%% One-sided extrap + relaxed optimal condition
+
+if numgap>0
+    fprintf('\n One-sided extrap + relaxed optimal condition \n');
+    fprintf( ' Reducing ARMA order *\n\n' );
+
+    if numgap==1
+        [datout, flagout, ~] = af_simp( datout, flagout, aka, igap, ...
+                    params,1, 'lastr_aka', true, '1s' );
+        igap = indgap( flagout );
+        l1 = length( igap );
+        numgap = l1/2;
+        fprintf('\nNumber of gaps remaining: %d\n', numgap);
+
+        if numgap>0
+            fprintf(2,'\nMerging is not effective to fill more gaps with these parameters.\n');
+            fprintf(2, warning_m1);
+            ft_corr = false;
+        end
+
+    else
+        while numgap>=1
+
+            while (rep<repmax && l0>=2)
+                [datout, flagout, ~] = af_simp( datout, flagout, aka, igap, ...
+                    params, j, 'lastr_aka', true, '1s' );
+
+                % Activate the FT correction with ftc flag from af_simp
+                if ftc,     ft_corr = ftc;      end
+
+                igap = indgap( flagout );
+
+                if isempty( igap )
+                    numgap = 0;
+                    fprintf('\nNumber of gaps remaining: 0\n');
+                    break;
+                end
+
+                % Number of gaps
+                l1 = length(igap);
+                numgap = l1/2;
+                fprintf('\nNumber of gaps remaining: %d\n\n', numgap);
+
+                j = j + 1;
+
+                % Every iteration begins from the opposite side of the series
+                if (rep<repmax && l0>=2)
+                    datout = flipud( datout );
+                    flagout = fliplr( flagout );
+                    igap = L-igap+1;
+                    igap = fliplr( igap );
+                end
+
+                % Termination condition: the number of gaps is not repeated 
+                % more than twice in consecutive iterations
+                if l1~=l0
+                    rep = 0;
+                    l0 = l1;
+                else
+                    rep = rep+1;
+                end
+            end
+
+            if mod(j,2)==1 && j>1
+                datout = flipud( datout );
+                flagout = fliplr( flagout );
+                igap = L-igap+1;
+                igap = fliplr( igap );
+            end
+            
+            % If the number of gaps is still greater than 1 it will merge some
+            % of them and repeat the main loop
+            j = 1; 
+            rep=0;
+            if numgap>1
+    %             flagout( flagout~=1 ) = 0;
+                fprintf( '\n *Reinicialization with gap merging*\n' );
+                numgap0 = numgap;
+                [flagout, go] = gapmerge( flagout, igap, facint );
+                if go==true
+    %                 flagin( flagout==-1 ) = -1;
+                    igap = indgap( flagout );
+                    l0 = length( igap );
+                    numgap = l0/2;
+                    fprintf('\n Merged gaps: %d\n', numgap0-numgap );
+                    fprintf('\nNumber of gaps remaining: %d\n\n', numgap);
+                else
+                    fprintf(2,'\nMerging is not effective to fill more gaps with these parameters.\n');
+                    fprintf(2, warning_m1);
+                    ft_corr = false;
+                    break;
+                end
+            else
+                if numgap==1
+                    fprintf(2,'\nMerging is not effective to fill more gaps with these parameters.\n');
+                    fprintf(2, warning_m1);
+                    ft_corr = false;
+                end
+                break;
+            end
+        end
     end
 end
 
 %% FT correction of the ARMA interpolation
 if ft_corr
-    datout_corr = ftcorr(datout, flagin);
+    datout_corr = ftcorr(datout, flagin, 'cutoff', cutoff_level);
+else
+    if isfield( strin.params, 'ft_corr' )
+        if strin.params.ft_corr
+            fprintf(2,'No FT correction can be applied due to the remaining gaps\n');
+        end
+    end
 end
 
 % Recover original data that was excluded during the interpolation
@@ -727,16 +872,12 @@ end
 %% Save output
 if ~ascii_struct
     % This occurs only when MIARMA is called for test purposes only
-    
+
+    strout.timeout = time;
+    strout.datout = datout;
+    strout.statout = flagout;
     if ft_corr
-        strout.timeout = timeout;
-        strout.datout = datout;
         strout.datout_corr = datout_corr;
-        strout.statout = flagout;
-    else
-        strout.timeout = timeout;
-        strout.datout = datout;
-        strout.statout = flagout;
     end
     
 else
@@ -760,14 +901,14 @@ else
     fprintf(fich,'x y z\n');
     
     if ft_corr
-        for i=1:length(timeout)
+        for i=1:L
             fprintf(fich,'%16.12f %16.13f %d\n',...
-                timeout(i),datout_corr(i),flagout(i));
+                time(i),datout_corr(i),flagout(i));
         end
     else       
-        for i=1:length(timeout)
+        for i=1:L
             fprintf(fich,'%16.12f %16.13f %d\n',...
-                timeout(i),datout(i),flagout(i));
+                time(i),datout(i),flagout(i));
         end
     end
     fclose(fich);
