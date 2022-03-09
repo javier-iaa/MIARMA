@@ -3,10 +3,11 @@ function varargout = armaord(S, varargin)
 % order (p,q) for an ARMA model fitting the time series S.
 % These calls are possible:
 %   armaord(S)
-%   armaord(S,'w',filename) read/write akaike coeffient matrix in filename
-%   armaord(S,'pmin',pmin) use pmin as min value for iterations
-%   armaord(S,'pmax',pmax) use pmax as max value for iterations
-%   armaord(S,'pmin',pmin,'pmax',pmax,'w',filename)
+%   armaord(S, 'w')
+%   armaord(S, 'w', filename) read/write akaike coefficient matrix in filename
+%   armaord(S, 'pmin', pmin) use pmin as min value for iterations
+%   armaord(S, 'pmax', pmax) use pmax as max value for iterations
+%   armaord(S, 'pmin', pmin, 'pmax', pmax, 'w', filename)
 %
 %   Outputs:
 %   varargout{1} = Akaike matrix
@@ -17,14 +18,13 @@ function varargout = armaord(S, varargin)
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 %
-% Version: 1.2.0
+% Version: 1.2.1
 %
 % Changes:
-% - Unified aka files for the same segment
-% - Header included in aka files
-% - Minor bugs fixed
+% - Default values for pmin, pmax, qmax have changed.
+% - Fixed a bug.
 %
-% Date: 05/11/2021
+% Date: 9/3/2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Information Criterion
@@ -34,7 +34,7 @@ warning off all
 
 %% Preparing input data
 
-% Controls verbose: 1 (default) means verbose mode, 0 is silent mode
+% Control verbose: 1 (default) means verbose mode, 0 is silent mode
 iver = find(strcmp(varargin,'verbose'), 1);
 if isempty(iver),
     verbflag = 1;
@@ -43,9 +43,6 @@ else
 end
 
 N = length(S);
-
-% Number of iterations for the algorithm
-% nit = 10; 
 
 switch IC
 
@@ -68,32 +65,25 @@ switch IC
         error('Selection criterion is not defined properly')
 end
     
-
-% nin = max(nargin,1)-1;
-% nout = max(nargout,1) - 2;
-
 % Change row into column
 S = reshape(S, N, 1);
 
 % Standardization
 S = stnorm(S);
 
-% If the parameters pmin, pmax are not introduced the subroutine uses
-% an estimate based on the length of the data segment
+% Values for pmin, pmax, qmax.
 ipm = find(strcmp(varargin,'pmin'), 1);
 if isempty(ipm),
-    pmin = round(N/3-1);
+    pmin = 1; % Default
 else
     pmin = varargin{ipm+1};
 end
-
 ipM = find(strcmp(varargin,'pmax'), 1);
 if isempty(ipM),
-    pmax = round(N/2-1);
+    pmax = 20; % Default
 else
     pmax = varargin{ipM+1};
 end
-
 ipq = find(strcmp(varargin,'qmax'), 1);
 if isempty(ipq),
     qmax = pmax;
@@ -208,7 +198,7 @@ if ~isempty(iw),
                     % Case i)
                     % Coeffs. in subset ie x je are read from akamat0
                     ie = pmax0 - pmin + 1;
-                    ii0 = pmin - 1;
+                    ii0 = pmin - pmin0 + 1;
                     je = qmax0 + 1;
                     akamat(1:ie ,1:je) = akamat0( ii0:end, :);
                     nsav = ie*je;
@@ -262,7 +252,6 @@ if ~isempty(iw),
                 end
             end
         end
-        
     end
     
     ncal = nmod - nsav;
@@ -351,7 +340,6 @@ if ~isempty(iw),
 end
 
 %% Optional outputs
-% This part of the code is just for test purposes
 if nargout==1,
     varargout{1} = akamat;
 elseif nargout==2,
