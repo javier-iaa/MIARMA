@@ -39,21 +39,16 @@ function [datout, flagout, ftc] = af_simp(datin, flagin, aka, ind1, params, vara
 %
 % Calls:   armaint.m
 %
-% Version: 0.4.0
+% Version: 0.4.1
 %
 % Changes from the last version: 
-% - ftc flag activate the FT correction when go is false
 % - lastr_aka flag activate last resource solution to use other "optimal" 
-% orders when there is an insufficient amount of data. This should be 
-% enable only once af_simp has been run with the flag disabled.
-% - 3 bugs fixed that caused some segments not corrected were used for 
-% the fitting of ARMA models during data segment selection.
-% - Minor fixes in ln 397 & 402
-% - Other minor fixes.
-% 
+% orders when there is an insufficient amount of data. Now it also use other 
+% orders when the parameter go returned by armaint is false.
+% - Bugs in Ln 192-195, 230-233 (commented)
 % Author: Javier Pascual-Granado
 %
-% Date: 26/10/2021
+% Date: 14/01/2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Flag to activate the FT correction in case armaint fails
@@ -194,10 +189,10 @@ while ind1f>=0,
                 end
                 
             else
-                nf = find( flagout( subi1 ) == 0.5, 1, 'last' );
-                if ~isempty(nf)
-                    subi1( 1:nf ) = [];
-                end
+%                 nf = find( flagout( subi1 ) == 0.5, 1, 'last' );
+%                 if ~isempty(nf)
+%                     subi1( 1:nf ) = [];
+%                 end
                 seg1 = datout( subi1 );
 
                 subi2 = (ind1(2)+1):(ind1(3)-1);                
@@ -232,10 +227,10 @@ while ind1f>=0,
                     end
                     
                 else                
-                     nf = find( flagout( subi2 ) == -0.5, 1, 'last');
-                     if ~isempty(nf),
-                         subi2( 1:nf ) = [];
-                     end
+%                      nf = find( flagout( subi2 ) == -0.5, 1, 'last');
+%                      if ~isempty(nf),
+%                          subi2( 1:nf ) = [];
+%                      end
                     seg2 = datout( subi2 );
                 end
             end
@@ -255,8 +250,11 @@ while ind1f>=0,
  %% Perform several checks over the data
     
     % NaN conditions - no nans in seg1 and seg2
-    nnanc1 = isempty(find(isnan(seg1),1));
-    nnanc2 = isempty(find(isnan(seg2),1));
+    
+    nancy1 = find(isnan(seg1),1, 'last');
+    nancy2 = find(isnan(seg2),1, 'first');
+    nnanc1 = isempty( nancy1 );
+    nnanc2 = isempty( nancy2 );
     no_nan_cond = nnanc1 && nnanc2;
    
     if no_nan_cond
@@ -326,7 +324,43 @@ while ind1f>=0,
                 end
            end
     else
-        % If one of the segment is nan the length of the other will be the 
+        if ~nnanc1
+            seg1 = seg1( (nancy1+1):end );
+        else
+            seg2 = seg2( 1:(nancy2-1) );
+        end
+        
+        % Truncate segments in order to have the same length
+        difl = lseg1 - lseg2;
+        if difl > 0
+            subi1 = subi1((difl+1):end);
+            seg1 = datout( subi1 );
+        elseif difl < 0
+             subi2 = subi2(1:(lseg2+difl));
+             seg2 = datout( subi2 );
+        end
+        len = length(seg1);
+                    
+        % Small gaps are linearly interpolated
+        if (np <= npi),
+            if len>npint
+                seg1 = seg1((len-npint+1):end);
+                seg2 = seg2(1:npint);
+            end
+
+            interp = polintre (seg1, seg2, np, 3);
+
+            datout(ind1(1):ind1(2)) = interp;
+            flagout(ind1(1):ind1(2)) = 0;
+            ind1(1:2)=[];
+
+            l1 = length(ind1);
+            ind1f = l1-1;
+
+            continue;
+        end                    
+                    
+        % If one of the segments is nan the length of the other will be the 
         % longer necessarily.
         if lseg1 > lseg2
             len = length(seg1);
@@ -416,11 +450,33 @@ while ind1f>=0,
         datout(ind1(1):ind1(2)) = interp;
         flagout(ind1(1):ind1(2)) = 0;
     else
-        ind1(1:2)=[];
-        l1 = length(ind1);
-        ind1f = l1 - 1;
-        ftc = true;
-        continue
+        % If armaint could not interpolate we try with the next "optimal" order
+        % If, in any case, this results insufficient we could try in the future two
+        % solutions: a loop to find the order that makes it works, to restrict the 
+        % orders in the MA part, since this appears to be more unstable when 
+        % the q is high.
+        if lastr_aka
+            while ~go
+                aka(cp, cq) = nan;
+                minaka = min( min(aka) );
+                if isnan( minaka )
+                    ftc = true;
+                    break
+                end
+                [cp, cq] = find(aka == minaka);
+                q = cq - 1;
+                p = cp + pmin - 1;
+                ord = [p q];
+                [interp, go] = armaint(seg1, seg2, ord, np);
+                if go
+                    datout(ind1(1):ind1(2)) = interp;
+                    flagout(ind1(1):ind1(2)) = 0;
+                    break
+                end
+            end
+        else
+            ftc = true;
+        end
     end
         
     % Recover data points that were taken out with sing
@@ -432,26 +488,7 @@ while ind1f>=0,
 %         datout = locdetrend(datout, datin, reco, reco0, seg1, seg2, interp, npint, np, ind1);
 %         datout(reco) = datin(reco);
 %     end
-
-    % If armaint could not interpolate we try with the next "optimal" order
-    % If, in any case, this results insufficient we could try in the future two
-    % solutions: a loop to find the order that makes it works, to restrict the 
-    % orders in the MA part, since this appears to be more unstable when 
-    % the q is high.
-%     if ~go
-%         aka(cp, cq) = nan;
-%         minaka = min( min(aka) );
-%         [cp, cq] = find(aka == minaka);
-%         q = cq - 1;
-%         p = cp + pmin - 1;
-%         ord = [p q];
-%         [interp, go] = armaint(seg1, seg2, ord, np);
-%         if go
-%             datout(ind1(1):ind1(2)) = interp;
-%             flagout(ind1(1):ind1(2)) = 0;
-%         end
-%     end
-    
+   
 %     indlast = ind1(2);
     ind1(1:2)=[];
     
