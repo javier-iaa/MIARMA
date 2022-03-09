@@ -1,4 +1,5 @@
 function yi = ftcorr(y, stat, varargin)
+% function yi = ftcorr(y, stat, varargin)
 % Fourier correction to the ARMA interpolation based on Fourier 
 % reconstruction.
 %
@@ -7,20 +8,30 @@ function yi = ftcorr(y, stat, varargin)
 %
 % Inputs:       y - observational data
 %                   stat - flag to identify the gaps
-%                   varargin can be: 'conf', 'ofac', 'range' followed by the 
+%                   varargin can be: 'cutoff', 'ofac', 'range' followed by the 
 %                       corresponding value.
+%                       cutoff - cutoff level in power, i.e. sqrt(cutoff) for amplitude
+%                           default value is 100 but for high S/R much higher values
+%                           are recommended.
 %                       ofac - oversampling factor for the LS computation (default = 1)
 %                       range - factor that controls the range of frequencies 
 %                           to explore, e.g. r=1 for Nyquist (default)
 %
 % Outputs:    yf - reconstructed data
 %
-% Version: 0.2
+% Version: 0.3
 % Changes:
-% - Minor fixes
+% - Cutoff level as optional parameter
+% - Crash test for nan values.
 %
-% Date: 29/10/2021
+% Date: 11/16/2021
 % Javier Pascual-Granado
+
+if ~isempty( find(isnan(y), 1) )
+    fprintf(2, '\n Input contains NaN values. Aborting... \n');
+    yi = y;
+    return
+end
 
 % Prepare data
 sy = size(y);
@@ -49,20 +60,18 @@ else
     ofac = 1;
 end
 
-% Confidence level
-% conf_flag = find( strcmp(varargin,'conf') );
-% if ~isempty(conf_flag)
-%     conf = varargin{conf_flag + 1};
-% else
-%     conf = 99;
-% end
+% Cutoff level
+cutoff_flag = find( strcmp(varargin,'cutoff') );
+if ~isempty(cutoff_flag)
+     level = varargin{cutoff_flag + 1};
+else
+     level = 100;
+end
 
+% Confidence level
+% conf = 99
 % alpha = (100 - conf)/2/100;
 % a = norminv( [alpha, 1-alpha], 0, 1 );
-
-% Cutoff level
-% level=a(2) ;
-level = 100;
 
 %% Calculate the periodogram and estimate noise level
 
