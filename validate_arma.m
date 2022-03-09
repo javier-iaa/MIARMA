@@ -17,9 +17,10 @@ function [isval, sta] = validate_arma( data, ord, facint, check )
 %
 % Several diagnostics can be used to test the interpolation and validate 
 % ord as the optimal order. Parameter <check> can be any of:
-% 'mse' for Mean Squared Error
+% 'fvar' for fraction of variability
 % 'pc' for Percentage of Consistency (default)
 % 'wn' for whiteness test
+% 'mse' for Mean Squared Error
 %
 % The output isval is true if the test is passed and sta is the value of 
 % the corresponding statistic used.
@@ -27,14 +28,16 @@ function [isval, sta] = validate_arma( data, ord, facint, check )
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 %
-% Version: 0.1
+% Version: 0.2
 %
 % Changes: 
-% - First version.
+% - Added new check: 'fvar'
+% - Fixed several bugs.
+% - Added NaN crash test.
 %
 % Call: armaint.m
 %
-% Date: 19/04/2021
+% Date: 12/01/2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 L = length(data);
@@ -43,26 +46,81 @@ if ~exist('check','var')
     check = 'pc';
 end
 
+% Convert to column-wise vector
+data = reshape(data, L, 1);
+
 % Statistical normalization
 sn = ( data - mean(data) )/std(data);
 
 % Data segments
-gapsize = L / (2*facint + 1);
-segsize = round( facint*gapsize );
-indi1 = 1;
+gapsize = fix( L / (2*facint + 1) );
+segsize = facint*gapsize;
 indf1 = segsize;
-indi2 = round (segsize + gapsize + 1 );
+seg1 = sn(1:indf1);
+orig = sn( (indf1+1):(indf1+gapsize) );
+indi2 = indf1 + gapsize + 1;
 indf2 = L;
-seg1 = sn(indi1:indf1);
 seg2 = sn(indi2:indf2);
-gapsize= L - 2*segsize;
 
 % Interpolation
-% segments must be colum-wise
-[interp, ~] = armaint(seg1', seg2', ord, gapsize);
- orig = sn( (indf1+1):(indi2-1) );
+[interp, ~] = armaint(seg1, seg2, ord, gapsize);
+
+
+% Mean of the data segment
+m = mean(orig);
+
+if any( isnan(interp) )
+    isval = false;
+    sta = NaN;
+    return
+end
+
+% Prediction error
+res = interp - orig;
+
+%% 1st check: compare variability of model and measurements
+% Percentage of output variability that is explained by the model. This is 
+% similar to the fit parameter calculated by Matlab compare function
+if strcmp( check, 'fvar')
+    
+    lim_fvar = 50;
+
+    sta = 100*( 1 - norm(res)/norm(orig-m) ) ;
+
+    if sta<lim_fvar
+        isval = false;
+    else
+        isval = true;
+    end
+end
+%% 2nd check: Consistency check (Ding et al. 2000)
+if strcmp( check, 'pc')
+     % Auto-correlation of original data
+    [c_orig,~] = xcorr(orig, floor(gapsize/2), 'coeff');
+
+    % Auto-correlation of interpolated data
+    [c_interp,~] = xcorr(interp', floor(gapsize/2), 'coeff');
+
+    % Percentage of Consistency (>80% or 85% is ok)
+    sta = 100*( 1-sum( (c_interp - c_orig).^2 ) / sum(c_orig.^2) );
+
+     if sta<80 || isnan(sta)
+         isval = false;
+     else
+         isval = true;
+     end
+ end
+%% 3rd check: whiteness
+% Not implemented yet
+if strcmp( check, 'wn'  )
+    m1 = armax(seg1, ord);
+    data1 = iddata( seg1, []);
+    resid(m1, data1);
+end
  
-%% 1st check: Mean Squared Error (MSE)
+%% 4th check: Mean Squared Error (MSE)
+% Not working fine
+
 % lim_chi2 = 0.2;
 % 
 % if strcmp( check, 'mse')
@@ -80,7 +138,7 @@ gapsize= L - 2*segsize;
 % end
 
 if strcmp( check, 'mse')
-    res = abs(orig - interp');
+    res = abs(interp - orig);
     [h, sta] = chi2gof( res );
     
     if h || isnan(sta)
@@ -91,29 +149,5 @@ if strcmp( check, 'mse')
         isval = true;
     end
 end
-%% 2nd check: Consistency check (Ding et al. 2000)
-if strcmp( check, 'pc')
-     % Auto-correlation of original data
-    [c_orig,~] = xcorr(orig,gapsize/2,'coeff');
 
-    % Auto-correlation of interpolated data
-    [c_interp,~] = xcorr(interp',gapsize/2,'coeff');
-
-    % Percentage of Consistency (>80% or 85% is ok)
-    sta = 100*( 1-sum( (c_interp - c_orig)'.^2 ) / sum(c_orig.^2) );
-
-     if sta<80 || isnan(sta)
-         isval = false;
-     else
-         isval = true;
-     end
- end
-%% 3rd check: whiteness
-% Not implemented yet
-if strcmp( check, 'wn'  )
-    m1 = armax(seg1', ord);
-    data1 = iddata( seg1', []);
-    resid(m1, data1);
-end
- 
 end
