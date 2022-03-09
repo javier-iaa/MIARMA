@@ -1,3 +1,44 @@
+09-mar-22   * MIARMA 0.1.1.0            
+            - Warning messages and more info is printed
+            - Segment used in armaord is saved now in strout.segord
+            - cutoff_level parameter for the FT correction.
+            - Warning when facmax makes that a too high number of datapoints are modeled.
+            - nuc parameter is removed.
+            - New auto_flag parameter for automatic search of optimal order through autoarmaord subroutine.
+            - Multiple minor improvements and fixes
+
+            * autoarmaord 0.1
+            - This subroutine is introduced to call armaord.m iteratively until a model with an optimal order is validated.
+
+            * armaord 1.2.1
+            - Default values for pmin, pmax, qmax have changed.
+            - A minor bug is fixed.
+            
+            * armaint 1.4.1
+            - Implemented a nan check for yfor and yback
+            - Crash test avoid 'compare' failing for long predictions.
+            - Conditions for sigma clipping are explicit.
+            - Added alternative options for armax in validation
+            
+            * af_simp 0.4.1
+            - lastr_aka flag activate last resource solution to use other "optimal" orders when there is an insufficient amount of data. Now it also uses other orders when the parameter 'go' returned by armaint is false.
+            - Minor bugs fixed.
+            
+            * validate_arma 0.2
+            - Added new check: 'fvar'
+            - Fixed several bugs.
+            - Added NaN crash test.
+            
+            * Plus/sampest 0.2
+            - A minor bug is fixed.
+            
+            * Plus/sigma_clip 0.4.1
+            - Info is updated and fixed
+            
+            * Plus/ftcorr.m 0.3
+            - Cutoff level as optional parameter.
+            - Crash test for nan values.
+            
 06-nov-21   * MIARMA 0.1.0.0
             - FT correction is activated by af_simp.m flag ftc when something goes wrong.
             - A new flag 'lastr_aka' is introduced in order to give a higher priority to the optimal order (see af_simp.m for more details). This flag is % internal, meaning that it cannot be given as input (at least by now).
