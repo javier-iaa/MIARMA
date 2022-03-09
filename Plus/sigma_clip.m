@@ -1,22 +1,21 @@
 function [ seg_out, stat_out ] = sigma_clip(seg_in, varargin)
 % function seg_out = sigma_clip(seg_in, varargin) performs a sigma clipping
-% of the input data segment seg_in with a sigma factor fac.
+% of the input data segment seg_in with a sigma factor fac (default is 2.5).
 % seg_in is initially detrended with a polynomial of 2nd degree.
 % The output data segment seg_out substitute values where seg_in 
 % exceed the limit with the mean of detrended segment.
 % 
-% Optional inputs are: 'fac', 'verb', 'empty', 'time'
-% stat_out is by default a id vector but if the 'empty' flag is used clipped values 
-% are set to zeros
+% Optional inputs are: 'fac' for sigma factor, 'verb' for verbosity and 'empty' to
+% fill clipped data with zeros.
+% stat_out is by default a vector of zeros but if the 'empty' flag is used clipped 
+% values  are set to ones
 %
-% Version: 0.4
+% Version: 0.4.1
 % Changes from the last version:
-% - empty flag to leave empty the outliers instead of interpolating them.
-% - added stat vector as output
-% - minor fixes
+% - Info is updated and fixed.
 %
 %  Author(s): Javier Pascual-Granado
-%  Date: 28/10/2021
+%  Date: 12/01/2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     % Verbosity flag
