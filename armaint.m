@@ -9,14 +9,16 @@ function [interp, go] = armaint(seg1, seg2, ord, N2)
 %               N2 - length of the gap
 % Outputs:      interp - interpolated segment
 %               go - true when the interpolation works and false otherwise
-% Version: 1.4.0
+% Version: 1.4.1
 % Changes from the last version:
-% - Implemented a new check for goodness of fitting of models
-% - Focus changed to 'Stability' and SearcMethod to 'lm'
+% - Implemented a nan check for yfor and yback
+% - Crash test avoid 'compare' failing for long predictions.
+% - Conditions for sigma clipping are explicit.
+% - Added alternative options for armax in validation
 %
 %  Calls: sigma_clip.m
 %  Author(s): Javier Pascual-Granado
-%  Date: 25/10/2021
+%  Date: 12/01/2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 go = true;
@@ -51,7 +53,6 @@ myalg.FixedParameter = [];
 myalg.Display = 'Off';
 myalg.N4Weight = 'Auto';
 myalg.N4Horizon = 'Auto';
-% myalg.InitialState = 'Backcast';
 myalg.InitialState = 'Auto';
 myalg.Advanced.Search.GnPinvConst = 10000;
 myalg.Advanced.Search.InitGnaTol = 1.0e-04;
@@ -239,6 +240,11 @@ if ~isempty(find(isnan(seg1),1))
 end
 
 %% Forward-Backward predictor: ARMA approach using an iterative algorithm
+
+% Alternative options
+myalg_alt = myalg;
+myalg_alt.Focus = 'Prediction';
+
 % Normalization
 sig_s1 = std(seg1);
 sig_s2 = std(seg2);
@@ -296,18 +302,42 @@ sigd_yf = std(diff(yfor));
 sigd_s1 = std(diff(seg1));
 sigd_s2 = std(diff(seg2));
 
-% Goodness of fitting for left model
-[~,g1,~] = compare(data1, model1, N2+1);
+% It seems utcompare function implemented in Matlab breaks for longer predictions
+lseg = length(seg1);
+qL = 0.8; % limit for prediction horizon
+predh = floor( qL*lseg );
 
-if sigd_yf > fac_sig*sigd_s1 && sigd_yf > fac_sig*sigd_s2 && g1<lim_gf
-    
+% Goodness of fitting for left model
+if N2>lseg,
+    [~,g1,~] = compare(data1, model1, predh);
+else
+    try
+        [~,g1,~] = compare(data1, model1, N2+1);
+    catch E
+        % This is for debugging purposes and will be eliminated in later versions
+        fprintf('\nN2 = %d, d = %d, L = %d ... \n', N2, sum(ord), lseg );
+        go = false;
+        return
+    end
+%     [~,g1,~] = compare(data1, model1, N2+1);
+end    
+
+
+% Conditions to enable sigma clipping
+cfcom = g1<lim_gf;
+cf1sig = sigd_yf > fac_sig*sigd_s1;
+cf2sig = sigd_yf > fac_sig*sigd_s2;
+cfsig = cf1sig && cf2sig && cfcom;
+connanf = isnan(sigd_yf);
+
+if  cfsig || connanf
     seg1 = sigma_clip( seg1 );
     sig_s1 = std( seg1 );
     seg1n = (seg1-mean(seg1))./sig_s1;
     
     % Calculate ARMA model and obtain the coeff. for the left segment
     try
-        model1 = armax(seg1n, ord, 'alg', myalg);
+        model1 = armax(seg1n, ord, 'alg', myalg_alt);
     catch E
         msg = getReport(E);
         go = false;
@@ -325,10 +355,20 @@ if sigd_yf > fac_sig*sigd_s1 && sigd_yf > fac_sig*sigd_s2 && g1<lim_gf
     
     sigd_yf = std(diff(yfor));
     sigd_s1 = std(diff(seg1));
-    [~,g1,~] = compare(data1, model1, N2+1);
+    if N2>lseg,
+        [~,g1,~] = compare(data1, model1, predh);
+    else
+        [~,g1,~] = compare(data1, model1, N2+1);
+    end 
     
-    if sigd_yf > fac_sig*sigd_s1 && sigd_yf > fac_sig*sigd_s2 && g1<lim_gf
-%         yfor = yfor.*(sig_s1/sig_yf);
+    % Conditions for sigma clipping
+    cfcom = g1<lim_gf;
+    cf1sig = sigd_yf > fac_sig*sigd_s1;
+    cf2sig = sigd_yf > fac_sig*sigd_s2;
+    cfsig = cf1sig && cf2sig && cfcom;
+    connanf = isnan(sigd_yf);
+
+    if  cfsig || connanf
        interp = NaN(1,N2);
        go = false;
        return
@@ -340,16 +380,27 @@ end
 % the extrapolations are unstable.
 
 sigd_yb = std(diff(yback));
-[~,g2,~] = compare(data2, model2, N2+1);
+if N2>lseg,
+    [~,g2,~] = compare(data2, model2, predh);
+else
+    [~,g2,~] = compare(data2, model2, N2+1);
+end
 
-if sigd_yb > fac_sig*sigd_s2 && sigd_yb > fac_sig*sigd_s1 && g2<lim_gf
+% Conditions to enable sigma clipping
+cbcom = g2<lim_gf;
+cb1sig = sigd_yb > fac_sig*sigd_s1;
+cb2sig = sigd_yb > fac_sig*sigd_s2;
+cbsig = cb1sig && cb2sig && cbcom;
+cbnan = isnan(sigd_yb);
+
+if  cbsig || cbnan
     seg2 = sigma_clip( seg2 );
     sig_s2 = std(seg2);
     seg2n = (seg2-mean(seg2))./sig_s2;
     
     % Calculate ARMA model and obtain the coeff. for the right segment
     try
-        model2 = armax( flipud(seg2n), ord, 'alg', myalg );
+        model2 = armax( flipud(seg2n), ord, 'alg', myalg_alt );
     catch E
         msg = getReport(E);
         go = false;
@@ -368,10 +419,20 @@ if sigd_yb > fac_sig*sigd_s2 && sigd_yb > fac_sig*sigd_s1 && g2<lim_gf
     
     sigd_yb = std(diff(yback));
     sigd_s2 = std(diff(seg2));
-    [~,g2,~] = compare(data2, model2, N2+1);
-    
-    if sigd_yb > fac_sig*sigd_s2 && sigd_yb > fac_sig*sigd_s1 && g2<lim_gf
-%         yback = yback.*(sig_s2/sig_yb);
+    if N2>lseg,
+        [~,g2,~] = compare(data2, model2, predh);
+    else
+        [~,g2,~] = compare(data2, model2, N2+1);
+    end 
+
+    % Conditions to enable sigma clipping
+    cbcom = g2<lim_gf;
+    cb1sig = sigd_yb > fac_sig*sigd_s1;
+    cb2sig = sigd_yb > fac_sig*sigd_s2;
+    cbsig = cb1sig && cb2sig && cbcom;
+    cbnan = isnan(sigd_yb);
+
+    if  cbsig || cbnan
         interp = NaN(1,N2);
         go = false;
         return
