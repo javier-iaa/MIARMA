@@ -2,14 +2,16 @@ function samp = sampest(timein)
 % function samp = sampest(timein) estimates the sampling of the time series
 % with times in timein.
 %
-%  Version: 0.1
+%  Version: 0.2
 %  Changes: histogram of the sampling intervals. This will be deprecated in
 %  future versions using the Bayesian Blocks algorithm to calculate the
 %  histogram since the classical histogram gives a poor resolution and it
 %  is necessary a huge number of bins.
 %
+% Changes: fix a bug in Ln 25
+%
 %  Author: Javier Pascual-Granado
-%  $Date: 02/03/2019 $
+%  $Date: 18/11/2021 $
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -20,7 +22,7 @@ dt = timein(2:L)-timein(1:L-1);
 
 %% Estimate sampling
 % a 1-percent deviation is admitted
-[n, dtm] = hist(dt,10000);
+[n, dtm] = hist(dt, L-1);
 [~, I] = max(n);
 samp0 = dtm(I);
 % samp0 = timein(2)-timein(1);
