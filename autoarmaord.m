@@ -33,11 +33,15 @@ function aka = autoarmaord( seg, varargin)
 %
 % Version: 0.1
 %
+% Changes:
+% - Introduced stop condition when the optimal order repeats several times
+% - Minor fixes.
+%
 % Calls:
 %  - armaord.m
 %  - validate_arma.m
 %
-% Date: 22/2/2022
+% Date: 22/03/2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Check inputs
@@ -95,6 +99,9 @@ pmax = dpmax;
 qmax = dqmax;
 pmax_lim = dpmax*10; % pmax_lim, qmax_lim might be 
 qmax_lim = dqmax*10; % optional inputs too in next update
+p0 = 0;
+q0 = 0;
+cont = 0;
 
 while ~isval
     
@@ -132,6 +139,18 @@ while ~isval
     p = cp + pmin - 1;
     ord = [p q];
     fprintf('\nOptimal order is (%d, %d)\n', p, q);
+    
+    % Stop condition: if the same order is found in more than 2 iterations
+    if p==p0 && q==q0
+        cont = cont + 1;
+        if cont==2
+            return
+        end
+    else
+        cont = 0;
+    end
+    p0 = p;
+    q0 = q;
 
     % Validate model with optimal order
     [isval_mse, sta_mse] = validate_arma( seg, ord, facint, 'mse' );
@@ -154,7 +173,7 @@ while ~isval
     qmax = qmax + dqmax;
     
     if pmax>pmax_lim || qmax>qmax_lim
-        break;
+        return
     end
     
 end
