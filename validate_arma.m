@@ -28,16 +28,14 @@ function [isval, sta] = validate_arma( data, ord, facint, check )
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 %
-% Version: 0.2
+% Version: 0.2.1
 %
 % Changes: 
-% - Added new check: 'fvar'
-% - Fixed several bugs.
-% - Added NaN crash test.
+% - Fixed minor bug in Ln 100.
 %
 % Call: armaint.m
 %
-% Date: 12/01/2022
+% Date: 21/03/2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 L = length(data);
@@ -99,7 +97,7 @@ if strcmp( check, 'pc')
     [c_orig,~] = xcorr(orig, floor(gapsize/2), 'coeff');
 
     % Auto-correlation of interpolated data
-    [c_interp,~] = xcorr(interp', floor(gapsize/2), 'coeff');
+    [c_interp,~] = xcorr(interp, floor(gapsize/2), 'coeff');
 
     % Percentage of Consistency (>80% or 85% is ok)
     sta = 100*( 1-sum( (c_interp - c_orig).^2 ) / sum(c_orig.^2) );
