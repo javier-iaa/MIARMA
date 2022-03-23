@@ -1,3 +1,16 @@
+24-mar-22   * MIARMA 0.1.1.1
+            - Fixed minor bug when no parameter structure is provided as input.
+
+	    * autoarmaord 0.1
+	    - Introduced stop condition when the optimal order repeats several times
+	    - Minor fixes.
+
+	    * validate_arma 0.2.1
+	    - Fixed minor bug.
+
+	    * miarma_tr
+	    - This new script is a wrapper to run MIARMA on a file removing transits before gap-filling is applied.
+
 09-mar-22   * MIARMA 0.1.1.0            
             - Warning messages and more info is printed
             - Segment used in armaord is saved now in strout.segord
@@ -7,7 +20,7 @@
             - New auto_flag parameter for automatic search of optimal order through autoarmaord subroutine.
             - Multiple minor improvements and fixes
 
-            * autoarmaord 0.1
+            * autoarmaord
             - This subroutine is introduced to call armaord.m iteratively until a model with an optimal order is validated.
 
             * armaord 1.2.1
