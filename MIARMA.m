@@ -48,26 +48,24 @@ function strout = MIARMA(strin)
 %                              pred.m
 %                              autoarmaord.m
 %
-% Version: 0.1.1.0
+% Version: 0.1.1.1
 %
 % Changes: 
-% - Multiple minor improvements and fixes
-% - Warning messages and more info is printed
-% - Segment used in armaord is saved now in strout.segord
-% - cutoff_level parameter for the FT correction.
-% - Warning when facmax makes that a too high number of datapoints are modeled.
-% - nuc parameter is removed.
-% - New auto_flag parameter for automatic search of optimal order through
-% autoarmaord subroutine.
+% - Fixed minor bug when no parameter structure is provided as input.
 %
-% Date: 18/2/2022
+% Date: 20/3/2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Some definitions
-numvers = '0.1.1.0';
+numvers = '0.1.1.1';
 
 lgaps0 = NaN;
 Llin = NaN;
+
+% Use default parameters
+if ~isfield(strin, 'params')
+    strin.params = 'default';
+end
 
 % Flag that controls screen output. Presently there are only two modes:
 % 'full' and 'simple'. In the future a 'minimal' mode will be implemented 
@@ -84,11 +82,11 @@ if verbflag
 
     % Header
     fprintf(2, '\n #########################################################\n');
-    fprintf(2, ' #                                                                                                                            #\n');
-    fprintf(2, ' #                                        MIARMA  %s                                                            #\n', numvers);
-    fprintf(2, ' #                      by  J.Pascual-Granado, IAA-CSIC, Spain. 2021                                    #\n');
-    fprintf(2, ' #                                   License GNU GPL v3.0                                                          #\n');
-    fprintf(2, ' #                                                                                                                            #\n');
+    fprintf(2, ' #                                                                                                                  #\n');
+    fprintf(2, ' #                                   MIARMA  %s                                                            #\n', numvers);
+    fprintf(2, ' #             by  J.Pascual-Granado, IAA-CSIC, Spain. 2021                             #\n');
+    fprintf(2, ' #                               License GNU GPL v3.0                                                #\n');
+    fprintf(2, ' #                                                                                                                 #\n');
     fprintf(2, ' #########################################################\n\n');
 
 end
