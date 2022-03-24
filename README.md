@@ -61,6 +61,35 @@ Here input structure ``strdata`` must contain at least three fields: ``time``, `
 
 Output structure ``strout`` contains the fields: ``timeout``, ``datout`` and ``statout`` corresponding to corrected data.
 
+Using MIARMA for removing transits in light curves
+--------------------------------------------------
+`miarma_tr` is a wrapper of MIARMA to run it on a file directly and remove transits before the gap-filling algorithm is applied. The removal procedure require transit parameters. When this is done a status array is generated to be used in the gap-filling process.
+ 
+To call `miarma_tr` apart from the filename string `fname` a structure `transit_str` must be provided with the following fields:
+-   `transit_str.porb`     is the orbital period in days
+-   `transit_str.epoch`    is the mid-transit epoch in RJD
+-   `transit_str.duration` is the transit duration in days
+
+Other inputs that might be provided preceded by the corresponding tag name string are:
+-  `nhead` is the number of header lines in the ASCII file (default 1)
+-  `delim` is the string delimiter to use (default is ' ')
+-  `timecol` is the column number for time (default is 1)
+-  `magcol` is the column number for magnitude (default is 2)
+-  `statcol` is the column number for the status of datapoints, i.e. the flag to decide when to interpolate or not. Status is modified after transit removal
+
+Example for Kepler data
+
+```matlab
+fname = 'kplr007199397-2011116030358_slc.dat';
+transit_str.porb = 105.881767; 
+transit_str.epoch = 2454989.979350 - 2400000.0; 
+transit_str.duration = 18.0440/24;
+ 
+miarma_tr(fname, transit_str, 'nhead', 8, 'delim', ' ', 'timecol', 1, 'magcol', 4);
+```
+This will generate an output file **`kplr007199397-2011116030358_slc_miarma.dat`** with 2 columns: time and flux.
+
+Folder /Tests contains the input for this example. The output is also provided as **`kplr007199397-2011116030358_slc_miarma_check.dat`** to check that running the script provides the expected output. You can just check both files with a diff command.
 
 Getting In Touch, and Getting Involved
 --------------------------------------
