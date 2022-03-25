@@ -79,6 +79,11 @@ Other inputs that might be provided preceded by the corresponding tag name strin
 
 Example for Kepler data
 
+<img src="Tests/KIC10666592.png" width=800 />
+
+You can find the files to generate the above plot in /Tests
+
+Here is the code example for the star KIC7199397.
 ```matlab
 fname = 'kplr007199397-2011116030358_slc.dat';
 transit_str.porb = 105.881767; 
