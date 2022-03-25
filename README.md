@@ -89,7 +89,7 @@ miarma_tr(fname, transit_str, 'nhead', 8, 'delim', ' ', 'timecol', 1, 'magcol', 
 ```
 This will generate an output file **`kplr007199397-2011116030358_slc_miarma.dat`** with 2 columns: time and flux.
 
-Folder /Tests contains the input for this example. The output is also provided as **`kplr007199397-2011116030358_slc_miarma_check.dat`** to check that running the script provides the expected output. You can just check both files with a diff command.
+Folder /Tests contains the input for this example. The output is also provided as **`kplr007199397-2011116030358_slc_miarma_check.dat`** to check that running the script provides the expected output.
 
 Getting In Touch, and Getting Involved
 --------------------------------------
