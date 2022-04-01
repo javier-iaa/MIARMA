@@ -79,11 +79,23 @@ Other inputs that might be provided preceded by the corresponding tag name strin
 
 Example for Kepler data
 
+Folder /Tests contains the input files for these examples. The output files are also provided with the suffix _miarma_check in the name e.g. **`kplr007199397-2011116030358_slc_miarma_check.dat`** to verify that the script miarma_tr provides the expected output on these inputs.
+
+Here is the code necessary to run the script with KIC10666592.
+
+```matlab
+fname = 'kplr010666592-2011116030358_slc.dat';
+transit_str.porb = 2.204735427; 
+transit_str.epoch = 54954.3585049999;
+transit_str.duration = 0.164303;
+ 
+miarma_tr(fname, transit_str, 'nhead', 8, 'delim', ' ', 'timecol', 1, 'magcol', 4);
+```
+This will generate the output file **`kplr010666592-2011116030358_slc_miarma.dat`** with 2 columns: time and flux. See below a plot illustrating the interpolation of the gaps after transit removal.
+
 <img src="Tests/KIC10666592.png" width=800 />
 
-You can find the files to generate the above plot in /Tests
-
-Here is the code example for the star KIC7199397.
+Here is also the list of parameters and code to reproduce another example with the star KIC7199397.
 ```matlab
 fname = 'kplr007199397-2011116030358_slc.dat';
 transit_str.porb = 105.881767; 
@@ -92,9 +104,7 @@ transit_str.duration = 18.0440/24;
  
 miarma_tr(fname, transit_str, 'nhead', 8, 'delim', ' ', 'timecol', 1, 'magcol', 4);
 ```
-This will generate an output file **`kplr007199397-2011116030358_slc_miarma.dat`** with 2 columns: time and flux.
-
-Folder /Tests contains the input for this example. The output is also provided as **`kplr007199397-2011116030358_slc_miarma_check.dat`** to check that running the script provides the expected output.
+Transits are not so deep in this case so it is advisable to perform a phase folding to make the transit shape noticeable.
 
 Getting In Touch, and Getting Involved
 --------------------------------------
