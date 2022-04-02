@@ -77,9 +77,9 @@ Other inputs that might be provided preceded by the corresponding tag name strin
 -  `magcol` is the column number for magnitude (default is 2)
 -  `statcol` is the column number for the status of datapoints, i.e. the flag to decide when to interpolate or not. Status is modified after transit removal
 
-Example for Kepler data
+Example for Kepler data (**section under construction**)
 
-Folder /Tests contains the input files for these examples. The output files are also provided with the suffix _miarma_check in the name e.g. **`kplr007199397-2011116030358_slc_miarma_check.dat`** to verify that the script miarma_tr provides the expected output on these inputs.
+Folder /Tests contains the input files for these examples. The output files are also provided with the suffix _miarma_check in the name e.g. **`kplr010666592-2011116030358_slc_miarma_check.dat`** to verify that the script miarma_tr provides the expected output on these inputs.
 
 Here is the code necessary to run the script with KIC10666592.
 
@@ -91,16 +91,16 @@ transit_str.duration = 0.164303;
  
 miarma_tr(fname, transit_str, 'nhead', 8, 'delim', ' ', 'timecol', 1, 'magcol', 4);
 ```
-This will generate the output file **`kplr010666592-2011116030358_slc_miarma.dat`** with 2 columns: time and flux. See below a plot illustrating the interpolation of the gaps after transit removal.
+This will generate an output file with 2 columns: time and flux. See below a plot illustrating the interpolation of the gaps after transit removal.
 
 <img src="Tests/KIC10666592.png" width=800 />
 
-Here is also the list of parameters and code to reproduce another example with the star KIC7199397.
+Here is also the list of parameters and code to reproduce another example ...
 ```matlab
-fname = 'kplr007199397-2011116030358_slc.dat';
-transit_str.porb = 105.881767; 
-transit_str.epoch = 2454989.979350 - 2400000.0; 
-transit_str.duration = 18.0440/24;
+fname = 'XX';
+transit_str.porb = XX; 
+transit_str.epoch = XX; 
+transit_str.duration = XX;
  
 miarma_tr(fname, transit_str, 'nhead', 8, 'delim', ' ', 'timecol', 1, 'magcol', 4);
 ```
