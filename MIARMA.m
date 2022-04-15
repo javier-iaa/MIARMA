@@ -14,7 +14,10 @@ function strout = MIARMA(strin)
 %
 %            and parameters in the struct params that contains the fields:
 %                temp, facmin, facmax, npi, npz, repmax, pmin, pmax, mseg, 
-%                nuc, always_int and qmax. 
+%                nuc, always_int and qmax.
+%
+%           If instead of strin, a filename string is passed as input, a two or three
+%           columns data file with floating number notation is assumed.
 %
 %            Consult the documentation for a detailed description of each 
 %            of these parameters.
@@ -47,20 +50,75 @@ function strout = MIARMA(strin)
 %                              armaint.m       
 %                              pred.m
 %                              autoarmaord.m
+%                              fractal_fraction.py
 %
-% Version: 0.1.1.1
+% Version: 0.1.2.0
 %
 % Changes: 
-% - Fixed minor bug when no parameter structure is provided as input.
+% - A filename string can be used as input instead a data structure.
+% - Sampling is always regularized as caution.
+% - fractal_fraction.py from franpy python module is used to print a warning 
+%     when the program might run for hours.
+% - Minor fixes.
+% - Disable warning and show specific warning messages.
 %
-% Date: 20/3/2022
+% Date: 15/04/2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%% Warning messages
+
+% Disable all standard warnings. Specific warning messages are created below.
+warning('off','all')
+
+warning_m1 = [ '\nWarning: interpolation finished before all gaps could be filled.' ...
+                '\nTry different values in the parameter structure e.g. facint, facmin, npi, repmax' ...
+                ', also others like facmax or mseg if nonstationarity is suspected.\n\n'];
+            
+warning_m2 = '\nWarning: computing time could be up to several hours.\n\n';
+
 %% Some definitions
-numvers = '0.1.1.1';
+numvers = '0.1.2.0';
 
 lgaps0 = NaN;
 Llin = NaN;
+
+%% Input data
+if ischar( strin )
+    filename = strin;
+       
+    % Here data is imported from an ASCII file having 3 columns: time, flux
+    % and status
+    strdata = importdata(filename);
+    akaname = filename(1:end-4);
+    if isstruct(strdata)
+        strdata = strdata.data;
+    end
+    tc = strdata(:,1);
+    sc = strdata(:,2);
+    if size( strdata, 2)==3
+        statc = strdata(:,3);
+    else
+        statc = zeros( size( tc) );
+    end
+else
+    tc = strin.time;
+    sc = strin.data;
+    statc = strin.stat;
+end
+
+% Sampling regularization
+[timein, datin, flagin] = regsamp(tc, sc, statc);
+
+frac_seg = maxseg(datin, flagin);
+
+% Use fractal fraction to warn about long computing time
+fracfrac = fraction_cgsa( frac_seg );
+if fracfrac<80
+    fprintf(2, warning_m2);
+end
+
+L = length(timein);
+datout = datin;
 
 % Use default parameters
 if ~isfield(strin, 'params')
@@ -73,7 +131,7 @@ end
 if isfield( strin.params, 'verbose')
     verbose = strin.params.verbose;
 else
-    verbose = 'full';
+    verbose = 'none';
 end
 
 verbflag = strcmp(verbose, 'full');
@@ -81,30 +139,16 @@ verbflag = strcmp(verbose, 'full');
 if verbflag
 
     % Header
-    fprintf(2, '\n #########################################################\n');
-    fprintf(2, ' #                                                                                                                  #\n');
-    fprintf(2, ' #                                   MIARMA  %s                                                            #\n', numvers);
-    fprintf(2, ' #             by  J.Pascual-Granado, IAA-CSIC, Spain. 2021                             #\n');
-    fprintf(2, ' #                               License GNU GPL v3.0                                                #\n');
-    fprintf(2, ' #                                                                                                                 #\n');
-    fprintf(2, ' #########################################################\n\n');
+    fprintf(2, '\n ###############################################\n');
+    fprintf(2, ' #                                                                                              #\n');
+    fprintf(2, ' #                                   MIARMA  %s                         #\n', numvers);
+    fprintf(2, ' #             by  J.Pascual-Granado, IAA-CSIC, Spain. 2021         #\n');
+    fprintf(2, ' #                               License GNU GPL v3.0                            #\n');
+    fprintf(2, ' #                                                                                             #\n');
+    fprintf(2, ' ################################################\n');
 
 end
-
-warning_m1 = [ '\nWarning: interpolation finished before all gaps could be filled.' ...
-                '\nTry different values in the parameter structure e.g. facint, facmin, npi, repmax' ...
-                ', also others like facmax or mseg if nonstationarity is suspected.\n\n'];
     
-%% Input data
-time = strin.time;
-datin = strin.data;
-flagin = strin.stat;
-
-L = length(datin);
-
-% Output data
-datout = datin;
-
 %% Parameters
 
 % --- Default values for parameters if no input is given ---
@@ -230,6 +274,8 @@ if isfield( strin, 'params' )
         
     if isfield(strin.params, 'ascii_struct')
         ascii_struct = strin.params.ascii_struct;
+    elseif exist('filename','var')
+        ascii_struct = true;
     end
 
     % Full name for the file containing the Akaike matrix      
@@ -308,7 +354,7 @@ else
     igap = indgap(flagin);
     if isempty(igap)
         flagout = flagin;
-        strout.timeout = time;
+        strout.timeout = timein;
         strout.datout = datout;
         strout.statout = flagout;
         strout.igap = igap;
@@ -360,11 +406,11 @@ else
    
             for i=1:L
                 fprintf(fich,'%16.12f %16.13f %d\n',...
-                    time(i), datout(i), flagout(i));
+                    timein(i), datout(i), flagout(i));
             end
             fclose(fich);
         else
-            strout.timeout = time;
+            strout.timeout = timein;
             strout.datout = datout;
             strout.statout = flagout;
             strout.igap = igap;
@@ -470,7 +516,7 @@ fprintf('\nOptimal order: [%d %d]\n\n', p, q);
 if ~ascii_struct
     strout.aka = aka;
     strout.igap = igap;
-    strout.timeout = time;
+    strout.timeout = timein;
     strout.datout = datout;
     strout.statout = flagin;
     strout.ord = [p q];
@@ -869,9 +915,9 @@ end
 
 %% Save output
 if ~ascii_struct
-    % This occurs only when MIARMA is called for test purposes only
+    % This occurs only when MIARMA from desktop interface
 
-    strout.timeout = time;
+    strout.timeout = timein;
     strout.datout = datout;
     strout.statout = flagout;
     if ft_corr
@@ -879,8 +925,11 @@ if ~ascii_struct
     end
     
 else
-    % This is the situation in a standard call
-    fout = 'output.agfs';
+    if exist('filename','var')
+        fout = [ filename(1:end-4) '.agfs'];
+    else
+        fout = 'output.agfs';
+    end
     fich = fopen(fout,'w');
     
     fprintf(fich,'# code: MIARMA\n');
@@ -901,12 +950,12 @@ else
     if ft_corr
         for i=1:L
             fprintf(fich,'%16.12f %16.13f %d\n',...
-                time(i),datout_corr(i),flagout(i));
+                timein(i),datout_corr(i),flagout(i));
         end
     else       
         for i=1:L
             fprintf(fich,'%16.12f %16.13f %d\n',...
-                time(i),datout(i),flagout(i));
+                timein(i),datout(i),flagout(i));
         end
     end
     fclose(fich);
