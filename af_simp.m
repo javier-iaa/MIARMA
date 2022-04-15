@@ -39,16 +39,14 @@ function [datout, flagout, ftc] = af_simp(datin, flagin, aka, ind1, params, vara
 %
 % Calls:   armaint.m
 %
-% Version: 0.4.1
+% Version: 0.4.2
 %
 % Changes from the last version: 
-% - lastr_aka flag activate last resource solution to use other "optimal" 
-% orders when there is an insufficient amount of data. Now it also use other 
-% orders when the parameter go returned by armaint is false.
-% - Bugs in Ln 192-195, 230-233 (commented)
+% - Progress numbers supressed (it is more important for armaord).
+% 
 % Author: Javier Pascual-Granado
 %
-% Date: 14/01/2022
+% Date: 15/04/2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Flag to activate the FT correction in case armaint fails
@@ -244,8 +242,8 @@ while ind1f>=0,
     np = ind1(2) - ind1(1) + 1;
     
     % Percentage complete
-    fprintf(repmat('\b',1,5));
-    fprintf('%3.0f %%', 100*ind1(1)/L);
+%     fprintf(repmat('\b',1,5));
+%     fprintf('%3.0f %%', 100*ind1(1)/L);
 
  %% Perform several checks over the data
     
@@ -499,7 +497,7 @@ while ind1f>=0,
     ord = ord1;
  end
  
-fprintf(repmat('\b',1,5));
+% fprintf(repmat('\b',1,5));
 fprintf('\n');
 
 end
