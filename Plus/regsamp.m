@@ -7,7 +7,7 @@ function varargout = regsamp(varargin)
 % In any case, time values are extrapolated to get evenly spaced time series
 %
 % Inputs:   an ASCII filename of a file containing the input data array, the
-%           corresponding time array, and the status array
+%           corresponding time array, and the status array (optional)
 %
 %           For test purposes this call is also available:
 %           regsamp(timein,datain,flagin)
@@ -17,14 +17,14 @@ function varargout = regsamp(varargin)
 %           status, otherwise:
 %           [timeout,dataout,flagout] = regsamp(timein,datain,flagin)
 %
-% Version: 0.8.1
+% Version: 0.8.2
 % Changes: 
-% - Minor
+% - The status array is now optional
 %
 % Requires ismemberf.m from Bruno Luong
 %
 %  Author: Javier Pascual-Granado
-%  $Date: 10/06/2021$
+%  $Date: 14/04/2022$
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Input data
@@ -33,11 +33,19 @@ if ischar(varargin{1}),
     strdata = importdata(filename);
     timein = strdata.data(:,1);
     datin = strdata.data(:,2);
-    flagin = strdata.data(:,3);
+    if size(strdata.data,2)==3
+        flagin = strdata.data(:,3);
+    else
+        flagin = zeros( size(timein) );
+    end
 else
     timein = varargin{1};
     datin = varargin{2};
-    flagin = varargin{3};
+    if nargin==3
+        flagin = varargin{3};
+    else
+        flagin = zeros( size(timein) );
+    end
 end
 
 L = length(timein);
