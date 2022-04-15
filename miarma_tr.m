@@ -22,7 +22,7 @@ function miarma_tr( fname, transit_str, varargin)
 % fname = 'kplr007199397-2011116030358_slc.dat';
 % transit_str.porb = 105.881767; 
 % transit_str.epoch = 2454989.979350 - 2400000.0; 
-% transit_str.duration = 18.0440/24;
+% transit_str.duration = 18.0440;
 % 
 % miarma_tr(fname, transit_str, 'nhead', 8, 'delim', ' ', 'timecol', 1, 'magcol', 4);
 % 
