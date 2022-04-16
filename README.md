@@ -61,6 +61,15 @@ Here input structure ``strdata`` must contain at least three fields: ``time``, `
 
 Output structure ``strout`` contains the fields: ``timeout``, ``datout`` and ``statout`` corresponding to corrected data.
 
+An alternative call is just ``MIARMA( filename )`` where ``filename`` corresponds to an ASCII file with two or three columns (time, data and optionally status). In this case, a file is generated as output with the same name as the input but extension will be .agfs
+
+An example of this is provided in folder /Tests for a stellar light curve for TIC211379298 gathered by TESS satellite. The input file ``211379298_t2.txt`` has 6 columns but we can easily convert to the 3 columns format of MIARMA using awk in this way:
+
+```
+awk '{print $1 " " $5 " " $6}' 211379298_t2.txt > TIC211379298.dat
+```
+Next we call ``MIARMA('TIC211379298.dat')`` and after a while it will generate the file ``TIC211379298.agfs`` which contains the output. Note that when the program starts it raises a warning saying that the computing time might be hours. The optimization performed to find the best model last much longer when the signal is deterministic so the program perform an estimation of the stochasticity to raise the warning or not. In this case, since TIC211379298 is a delta Scuti star, stellar oscillations are non-stochastic. However, I have pre-calculated for you the most computationally expensive part of the procedure (i.e. armaord.m) whose results are gathered in the .akc files, so computing time should be only ~1 min. The result should be similar to what is shown in the plot``TIC211379298.png``. If you cannot distinguish where was the gap that means it is a nice interpolation :)
+
 Using MIARMA for removing transits in light curves
 --------------------------------------------------
 `miarma_tr` is a wrapper of MIARMA to run it on a file directly and remove transits before the gap-filling algorithm is applied. The removal procedure require transit parameters. When this is done a status array is generated to be used in the gap-filling process.
@@ -77,7 +86,7 @@ Other inputs that might be provided preceded by the corresponding tag name strin
 -  `magcol` is the column number for magnitude (default is 2)
 -  `statcol` is the column number for the status of datapoints, i.e. the flag to decide when to interpolate or not. Status is modified after transit removal
 
-Example for Kepler data (**section under construction**)
+Example for Kepler data
 
 Folder /Tests contains the input files for these examples. The output files are also provided with the suffix _miarma_check in the name e.g. **`kplr010666592-2011116030358_slc_miarma_check.dat`** to verify that the script miarma_tr provides the expected output on these inputs.
 
@@ -94,6 +103,8 @@ miarma_tr(fname, transit_str, 'nhead', 8, 'delim', ' ', 'timecol', 1, 'magcol', 
 This will generate an output file with 2 columns: time and flux. See below a plot illustrating the interpolation of the gaps after transit removal.
 
 <img src="Tests/KIC10666592.png" width=800 />
+
+A second example provided in Tests folder is Kepler-69, a system with multiple exoplanets detected. The Jupyter notebook provides full instructions to download and prepare data from MAST using Lightkurve, a Python package for Kepler and TESS data analysis (Lightkurve Collaboration, 2018). Transit parameters are obtained through BLS periodogram and each transit is remove periodically. Finally, the file ``Kepler-69_PDCSAP_masked.dat`` generated contains the light curve after removing the transits. This file is passed as input to MIARMA to interpolate the gaps producing the evenly sampled data file ``Kepler-69_PDCSAP_masked.agfs``.
 
 Getting In Touch, and Getting Involved
 --------------------------------------
