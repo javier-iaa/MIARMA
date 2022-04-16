@@ -95,17 +95,6 @@ This will generate an output file with 2 columns: time and flux. See below a plo
 
 <img src="Tests/KIC10666592.png" width=800 />
 
-Here is also the list of parameters and code to reproduce another example ...
-```matlab
-fname = 'XX';
-transit_str.porb = XX; 
-transit_str.epoch = XX; 
-transit_str.duration = XX;
- 
-miarma_tr(fname, transit_str, 'nhead', 8, 'delim', ' ', 'timecol', 1, 'magcol', 4);
-```
-Transits are not so deep in this case so it is advisable to perform a phase folding to make the transit shape noticeable.
-
 Getting In Touch, and Getting Involved
 --------------------------------------
 
