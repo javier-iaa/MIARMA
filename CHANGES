@@ -1,3 +1,22 @@
+16-apr-22   * MIARMA 0.1.2.0
+            - A filename string can be used as input instead a data structure.
+            - Sampling is always regularized as caution.
+            - fractal_fraction.py from franpy python module is used to print a warning when the program might run for hours.
+            - Minor fixes.
+            - Disable warning and show specific warning messages.
+            
+            * Plus/regsamp 0.8.2
+            - The status array is now optional
+            
+            * af_simp 0.4.2
+            - Progress numbers supressed (it is more important for armaord).
+            
+            * Plus/fraction_cgsa & Plus/fastCGSA
+            - Code based on CGSA method by Yamamoto to calculate the fraction of fractal component which is used by MIARMA to detect stochastic or deterministic oscillators. In the last case the computing time can be much larger. This tools have been adapted from Python routines included in franpy module.
+            
+            * Plus/maxseg 0.1
+            - Gives the largest segment without gaps. Required by the previous routines but also useful independently for test purposes.
+
 24-mar-22   * MIARMA 0.1.1.1
             - Fixed minor bug when no parameter structure is provided as input.
 
