@@ -9,11 +9,11 @@ Files in folder \Plus are external tools developed by the same author for other 
 
 Requirements
 ------------
-Matlab R2010b or later release.
-Identification toolbox.
-Optimization toolbox.
-Signal toolbox.
-Statistics toolbox.
+Matlab R2010b or later release. \
+Identification toolbox. \
+Optimization toolbox. \
+Signal toolbox. \
+Statistics toolbox. 
 
 Citing MIARMA
 -------------
