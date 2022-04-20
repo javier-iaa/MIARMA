@@ -7,6 +7,14 @@ MIARMA uses a forward-backward predictor based on autoregressive moving-average 
 
 Files in folder \Plus are external tools developed by the same author for other purposes which are also necessary to run MIARMA.
 
+Requirements
+------------
+Matlab R2010b or later release.
+Identification toolbox.
+Optimization toolbox.
+Signal toolbox.
+Statistics toolbox.
+
 Citing MIARMA
 -------------
 If you use MIARMA or any of the subroutines included, please cite the following references [Pascual-Granado, Garrido and Suárez 2015, A&A, 575. A78](https://ui.adsabs.harvard.edu/abs/2015A%26A...575A..78P/abstract) and [Pascual-Granado et al. 2018, A&A, 614, A40](https://ui.adsabs.harvard.edu/abs/2018A%26A...614A..40P/abstract). Here are the BibTeX sources:
