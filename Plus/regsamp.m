@@ -17,9 +17,9 @@ function varargout = regsamp(varargin)
 %           status, otherwise:
 %           [timeout,dataout,flagout] = regsamp(timein,datain,flagin)
 %
-% Version: 0.8.2
+% Version: 0.8.3
 % Changes: 
-% - The status array is now optional
+% - Using median values instead of zeros.
 %
 % Requires ismemberf.m from Bruno Luong
 %
@@ -81,7 +81,9 @@ end
 timef = samp*round( timein(end)/samp );
 timeout = 0:samp:timef;
 L1 = length(timeout);
-datout = zeros(1,L1);
+med = median( datin );
+% datout = zeros(1,L1);
+datout = med*ones(1,L1);
 flagout = ones(1,L1);
 
 ti = samp*nearest( timein/samp );    
