@@ -30,9 +30,11 @@ function miarma_tr( fname, transit_str, varargin)
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.csic.es;">IAA-CSIC, Spain</a>
 %
-% Version: 0.1
+% Version: 0.1.1
+% Changes:
+% - Minor: regsamp no longer necessary
 %
-% Date: 22/03/2022
+% Date: 31/05/2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -134,13 +136,16 @@ lost_transit = L - length(tc);
 
 %% MIARMA
 
-% First-step: sampling regularization
-[treg, sreg, statreg] = regsamp(tc, sc, statc);
+% First-step: sampling regularization (no longer necessary since it is implemented inside MIARMA)
+% [treg, sreg, statreg] = regsamp(tc, sc, statc);
 
 % Inputs for MIARMA
-strdata.time = treg;
-strdata.data = sreg;
-strdata.stat = statreg;
+% strdata.time = treg;
+strdata.time = tc;
+% strdata.data = sreg;
+strdata.data = sc;
+% strdata.stat = statreg;
+strdata.stat = statc;
 
 % strdata.params.temp = 1;
 % strdata.params.pmax = 20;
