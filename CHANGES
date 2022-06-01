@@ -1,3 +1,28 @@
+01-jun-22   * MIARMA 0.1.2.1
+            - autoarmaord now requires input rep_lim
+            - autoarmaord uses optionally mseg parameter to trim the segment to calculate the optimal order in armaord. If the trimmed segment does not pass the tests the full segment is used.
+            - fraction_cgsa.m is no longer used, only fastCGSA.m is necessary
+            
+	    * armaint 1.4.2
+            - Minor fix to solve a compatibility issue with modern MATLAB releases.
+
+            * autoarmaord 0.2
+            - Added parameter rep_lim that controls limit in the repetition.
+            - Several crash tests.
+            - Added parameter mseg to trim the segment.
+            - The search is repeated if the tests are not fulfilled for the trimmed segment and the max length segment is used in that case.
+
+	    * miarma_tr 0.1.1
+	    - Minor: regsamp no longer necessary
+
+	    * fastCGSA.m 0.2
+	    - frac is the fraction of fractal component
+            - errfrac is the estimation of the error in fraction of fractal component
+            - minor fixes.
+
+	    * regsamp 0.8.3
+	    - Using median values instead of zeros.
+
 16-apr-22   * MIARMA 0.1.2.0
             - A filename string can be used as input instead a data structure.
             - Sampling is always regularized as caution.
