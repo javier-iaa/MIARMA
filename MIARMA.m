@@ -50,19 +50,18 @@ function strout = MIARMA(strin)
 %                              armaint.m       
 %                              pred.m
 %                              autoarmaord.m
-%                              fractal_fraction.py
+%                              fastCGSA.m
 %
-% Version: 0.1.2.0
+% Version: 0.1.2.1
 %
 % Changes: 
-% - A filename string can be used as input instead a data structure.
-% - Sampling is always regularized as caution.
-% - fractal_fraction.py from franpy python module is used to print a warning 
-%     when the program might run for hours.
-% - Minor fixes.
-% - Disable warning and show specific warning messages.
+% - autoarmaord now requires input rep_lim
+% - autoarmaord uses optionally mseg parameter to trim the segment to 
+% calculate the optimal order in armaord. If the trimmed segment does not pass
+% the tests the full segment is used.
+% - fraction_cgsa.m is no longer used, only fastCGSA.m is necessary
 %
-% Date: 15/04/2022
+% Date: 01/06/2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Warning messages
@@ -77,7 +76,7 @@ warning_m1 = [ '\nWarning: interpolation finished before all gaps could be fille
 warning_m2 = '\nWarning: computing time could be up to several hours.\n\n';
 
 %% Some definitions
-numvers = '0.1.2.0';
+numvers = '0.1.2.1';
 
 lgaps0 = NaN;
 Llin = NaN;
@@ -112,9 +111,13 @@ end
 frac_seg = maxseg(datin, flagin);
 
 % Use fractal fraction to warn about long computing time
-fracfrac = fraction_cgsa( frac_seg );
+[~, ~, ~, fracfrac, ~] = fastCGSA( frac_seg );
+% fracfrac = fraction_cgsa( frac_seg );
 if fracfrac<80
     fprintf(2, warning_m2);
+    rep_lim = 10; % used for deterministic signals
+else
+    rep_lim = 2;
 end
 
 L = length(timein);
@@ -139,13 +142,13 @@ verbflag = strcmp(verbose, 'full');
 if verbflag
 
     % Header
-    fprintf(2, '\n ###############################################\n');
-    fprintf(2, ' #                                                                                              #\n');
-    fprintf(2, ' #                                   MIARMA  %s                         #\n', numvers);
-    fprintf(2, ' #             by  J.Pascual-Granado, IAA-CSIC, Spain. 2021         #\n');
-    fprintf(2, ' #                               License GNU GPL v3.0                            #\n');
-    fprintf(2, ' #                                                                                             #\n');
-    fprintf(2, ' ################################################\n');
+    fprintf(2, '\n #################################################\n');
+    fprintf(2, ' #                                               #\n');
+    fprintf(2, ' #                 MIARMA  %s                 #\n', numvers);
+    fprintf(2, ' #  by J.Pascual-Granado, IAA-CSIC, Spain. 2021  #\n');
+    fprintf(2, ' #              License GNU GPL v3.0             #\n');
+    fprintf(2, ' #                                               #\n');
+    fprintf(2, ' #################################################\n');
 
 end
     
@@ -154,6 +157,8 @@ end
 % --- Default values for parameters if no input is given ---
 
 % Maximum length of the segment used to calculate ARMA order
+% If the optimal model does not pass the tests this will be increased until the 
+% maximum possible length
 mseg = 1000;
 
 % Max. ratio between segment length and number of parameters for the model
@@ -443,11 +448,6 @@ else
         seg = datout((igap(I*2-2)+1):(igap(I*2-1)-1));
     end
     
-    % mseg is the max. length of the segment use to calculate the order
-    if ML>mseg
-        seg = seg(1:mseg);
-    end
-    
     if verbflag
         fprintf('Step 4 - Order estimation\n\nPlease wait...\n\n');
         fprintf('%d datapoints used for the grid of ARMA models\n',length(seg));
@@ -485,21 +485,21 @@ else
     else
         if exist('akaname', 'var')
             if verbflag
-                aka = autoarmaord( seg, 'w', akaname);
+                aka = autoarmaord( seg, 'w', akaname, 'rep', rep_lim, 'mseg', mseg);
             else
-                aka = autoarmaord( seg, 'verbose', false, 'w', akaname);
+                aka = autoarmaord( seg, 'verbose', false, 'w', akaname, 'rep', rep_lim, 'mseg', mseg);
             end
         elseif temp
             if verbflag
-                aka = autoarmaord( seg, 'w' );
+                aka = autoarmaord( seg, 'w', 'rep', rep_lim, 'mseg', mseg);
             else
-                aka = autoarmaord( seg, 'verbose', false, 'w');
+                aka = autoarmaord( seg, 'verbose', false, 'w', 'rep', rep_lim, 'mseg', mseg);
             end
         else
             if verbflag
-                aka = autoarmaord( seg );
+                aka = autoarmaord( seg, 'rep', rep_lim, 'mseg', mseg);
             else
-                aka = autoarmaord( seg, 'verbose', false );
+                aka = autoarmaord( seg, 'verbose', false, 'rep', rep_lim, 'mseg', mseg);
             end
         end
     end
