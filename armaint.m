@@ -9,16 +9,13 @@ function [interp, go] = armaint(seg1, seg2, ord, N2)
 %               N2 - length of the gap
 % Outputs:      interp - interpolated segment
 %               go - true when the interpolation works and false otherwise
-% Version: 1.4.1
+% Version: 1.4.2
 % Changes from the last version:
-% - Implemented a nan check for yfor and yback
-% - Crash test avoid 'compare' failing for long predictions.
-% - Conditions for sigma clipping are explicit.
-% - Added alternative options for armax in validation
+% - Minor fix to solve a compatibility issue with modern MATLAB releases.
 %
 %  Calls: sigma_clip.m
 %  Author(s): Javier Pascual-Granado
-%  Date: 12/01/2022
+%  Date: 1/06/2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 go = true;
@@ -53,7 +50,7 @@ myalg.FixedParameter = [];
 myalg.Display = 'Off';
 myalg.N4Weight = 'Auto';
 myalg.N4Horizon = 'Auto';
-myalg.InitialState = 'Auto';
+% myalg.InitialState = 'Auto';
 myalg.Advanced.Search.GnPinvConst = 10000;
 myalg.Advanced.Search.InitGnaTol = 1.0e-04;
 myalg.Advanced.Search.LmStep = 2;
