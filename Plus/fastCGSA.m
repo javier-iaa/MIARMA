@@ -1,5 +1,5 @@
-function [av_SXX, av_SXXh, Ndata] = fastCGSA(data, h, l, sub) 
-%[av_SXX, av_SXXh, Ndata] = fastCGSA(data , h, l, sub) 
+function [av_SXX, av_SXXh, Ndata, frac, errfrac] = fastCGSA(data, h, l, sub) 
+%[av_SXX, av_SXXh, Ndata, frac, errfrac] = fastCGSA(data , h, l, sub) 
 %
 % Input:
 %              data is the original time series
@@ -23,12 +23,17 @@ function [av_SXX, av_SXXh, Ndata] = fastCGSA(data, h, l, sub)
 %
 %               Ndata is the number of data points used from data
 %
-% Version: 0.1
+% Version: 0.2
 %
 % Code based on Yamamoto and Hughson 1991 and 1993.
+% 
+% Changes:
+% - frac is the fraction of fractal component
+% - errfrac is the estimation of the error in fraction of fractal component
+% - minor fixes.
 %
 % Author: Javier Pascual-Granado
-% Last update: 08-sep-2020
+% Last update: 29-may-2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Default values
@@ -80,12 +85,24 @@ for i=0:sub-1
 end
 
 % Averaged auto-power spectrum
-av_SXX = (1/sub)*sum( abs( FS(3:end, :) ).^2 , 1);
+% av_SXX = (1/sub)*sum( abs( FS(3:end, :) ).^2 , 1);
+av_SXX = (1/sub)*sum( abs( FS ).^2 , 1);
 
 % Cross-power spectra
 csp_h = FS.*conj(FS_h);
 
+% fractal fraction for each sub-segment
+frac = zeros(1,sub);
+for i=1:sub
+    frac(i) = 100*real( sum( abs( csp_h(i,:) ) ) / sum( abs( FS(i,:).^2 ) ) );
+end
+
+% Confidence interval (95%) assuming a gaussian distribution
+errfrac = 1.96*std( frac );
+
 % Averaged through the subsets
 av_SXXh = (1/sub)*sum( abs( csp_h ) , 1);
+
+frac = 100*real( sum(av_SXXh) / sum(av_SXX) );
 
 end
