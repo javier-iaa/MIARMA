@@ -30,11 +30,11 @@ function miarma_tr( fname, transit_str, varargin)
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.csic.es;">IAA-CSIC, Spain</a>
 %
-% Version: 0.1.1
+% Version: 0.1.2 - R2022
 % Changes:
-% - Minor: regsamp no longer necessary
+% - Minor fixes.
 %
-% Date: 31/05/2022
+% Date: 03/06/2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -45,7 +45,7 @@ duration = transit_str.duration;
 
 % Value for delim parameter
 idl = find(strcmp(varargin,'delim'), 1);
-if isempty(idl),
+if isempty(idl)
     delim = ' '; % Default
 else
     delim = varargin{idl+1};
@@ -53,7 +53,7 @@ end
 
 % Value for nhead parameter
 inh = find(strcmp(varargin,'nhead'), 1);
-if isempty(inh),
+if isempty(inh)
     nhead = 1; % Default
 else
     nhead = varargin{inh+1};
@@ -61,7 +61,7 @@ end
 
 % Value for timecol parameter
 itc = find(strcmp(varargin,'timecol'), 1);
-if isempty(itc),
+if isempty(itc)
     timecol = 1; % Default
 else
     timecol = varargin{itc+1};
@@ -69,7 +69,7 @@ end
 
 % Value for magcol parameter
 imc = find(strcmp(varargin,'magcol'), 1);
-if isempty(imc),
+if isempty(imc)
     magcol = 2; % Default
 else
     magcol = varargin{imc+1};
@@ -88,7 +88,7 @@ s = data(:, magcol);
 
 % Value for statcol parameter
 isc = find(strcmp(varargin,'statcol'), 1);
-if isempty(isc),
+if isempty(isc)
     stat = zeros(1,L); % Default
 else
     statcol = varargin{isc+1};
@@ -100,7 +100,7 @@ indinf = find( isinf(s) );
 s(indinf) = [];
 t(indinf) = [];
 stat(indinf) = [];
-linf = length( indinf );
+%linf = length( indinf );
 
 % Convert to ppm and detrend
 % p = polyfit(t, s,1);
@@ -132,7 +132,7 @@ for i=1:N
     statc(transit_ind) = [];
 end
 
-lost_transit = L - length(tc);
+%lost_transit = L - length(tc);
 
 %% MIARMA
 
@@ -150,16 +150,19 @@ strdata.stat = statc;
 % strdata.params.temp = 1;
 % strdata.params.pmax = 20;
 % strdata.params.facmin = 10;
+strdata.params.mseg = 3000;
 
 % Gap-filling
 strout = MIARMA( strdata );
 sint = strout.datout;
+tint = strout.timeout;
 
 %% Write the output
 Lg = length(sint);
 fnameo = [ fname(1:end-4) '_miarma.dat' ];
 fich = fopen(fnameo, 'w');
-for i=1:Lg,
-    fprintf(fich,'%16.13f %16.13f\n', treg(i), sint(i));
+for i=1:Lg
+    %fprintf(fich,'%16.13f %16.13f\n', treg(i), sint(i));
+    fprintf(fich,'%16.13f %16.13f\n', tint(i), sint(i));
 end
 fclose(fich);
