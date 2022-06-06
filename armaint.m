@@ -9,13 +9,15 @@ function [interp, go] = armaint(seg1, seg2, ord, N2)
 %               N2 - length of the gap
 % Outputs:      interp - interpolated segment
 %               go - true when the interpolation works and false otherwise
-% Version: 1.4.2
+%
+% Version: 1.4.3 - R2022
+%
 % Changes from the last version:
-% - Minor fix to solve a compatibility issue with modern MATLAB releases.
+% - pred.m is substituted by forecast 
 %
 %  Calls: sigma_clip.m
 %  Author(s): Javier Pascual-Granado
-%  Date: 1/06/2022
+%  Date: 03/06/2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 go = true;
@@ -70,6 +72,9 @@ myalg.Advanced.Threshold.AutoInitialState = 1.05; %  Specifies when to automatic
 % to the norm with an estimated initial state exceeds AutoInitialState. 
 % Default is 1.05.
 
+%% Forecast options
+opt = forecastOptions('InitialCondition', 'e');
+
 %% Preparing data
 % Stationarity is assumed
 sigma = std([seg1; seg2]);
@@ -114,7 +119,7 @@ if ~isempty(find(isnan(seg2),1))
     end
     ts = 1;
     data1 = iddata(seg1n(1:end-1),[],ts);
-    yfor = pred(model1,data1,N2+1,'e');
+    yfor = forecast(model1,data1,N2+1, opt);
     yfor = yfor.y;
         
     % Estimation of residuals
@@ -143,7 +148,7 @@ if ~isempty(find(isnan(seg2),1))
             return
         end
         data1 = iddata(seg1n(1:end-1),[],ts);
-        yfor = pred(model1,data1,N2+1,'e');
+        yfor = forecast(model1,data1,N2+1,opt);
         yfor = yfor.y;
             
         % Estimation of residuals
@@ -182,7 +187,7 @@ if ~isempty(find(isnan(seg1),1))
         return
     end
     data2 = iddata( flipud(seg2n(2:end)), [] );
-    yback = pred(model2,data2,N2+1,'e');
+    yback = forecast(model2,data2,N2+1,opt);
     yback = yback.y;
     yback = flipud(yback);
 
@@ -212,7 +217,7 @@ if ~isempty(find(isnan(seg1),1))
             return
         end
         data2 = iddata( flipud(seg2n(2:end)) ,[] );
-        yback = pred(model2,data2,N2+1,'e');
+        yback = forecast(model2,data2,N2+1,opt);
         yback = yback.y;
         yback = flipud(yback);
         
@@ -262,7 +267,7 @@ catch E
 end
 
 data1 = iddata( seg1n(1:end-1), []);
-yfor = pred( model1, data1, N2+1, 'e' );
+yfor = forecast( model1, data1, N2+1, opt );
 yfor = yfor.y;
 
 % Backward extrapolation
@@ -277,7 +282,7 @@ catch E
 end
 
 data2 = iddata( flipud(seg2n(2:end)), [] );
-yback = pred(model2,data2,N2+1,'e');
+yback = forecast(model2,data2,N2+1,opt);
 yback = yback.y;
 yback = flipud(yback);
 
@@ -305,7 +310,7 @@ qL = 0.8; % limit for prediction horizon
 predh = floor( qL*lseg );
 
 % Goodness of fitting for left model
-if N2>lseg,
+if N2>lseg
     [~,g1,~] = compare(data1, model1, predh);
 else
     try
@@ -341,7 +346,7 @@ if  cfsig || connanf
         return
     end
     data1 = iddata( seg1n(1:end-1), [] );
-    yfor = pred( model1, data1, N2+1, 'e' );
+    yfor = forecast( model1, data1, N2+1, opt );
     yfor = yfor.y;
           
     % Estimation of residuals
@@ -352,7 +357,7 @@ if  cfsig || connanf
     
     sigd_yf = std(diff(yfor));
     sigd_s1 = std(diff(seg1));
-    if N2>lseg,
+    if N2>lseg
         [~,g1,~] = compare(data1, model1, predh);
     else
         [~,g1,~] = compare(data1, model1, N2+1);
@@ -377,7 +382,7 @@ end
 % the extrapolations are unstable.
 
 sigd_yb = std(diff(yback));
-if N2>lseg,
+if N2>lseg
     [~,g2,~] = compare(data2, model2, predh);
 else
     [~,g2,~] = compare(data2, model2, N2+1);
@@ -404,7 +409,7 @@ if  cbsig || cbnan
         return
     end
     data2 = iddata( flipud(seg2n(2:end)), [] );
-    yback = pred( model2, data2, N2+1, 'e');
+    yback = forecast( model2, data2, N2+1, opt);
     yback = yback.y;
     yback = flipud(yback);
     
@@ -416,7 +421,7 @@ if  cbsig || cbnan
     
     sigd_yb = std(diff(yback));
     sigd_s2 = std(diff(seg2));
-    if N2>lseg,
+    if N2>lseg
         [~,g2,~] = compare(data2, model2, predh);
     else
         [~,g2,~] = compare(data2, model2, N2+1);
