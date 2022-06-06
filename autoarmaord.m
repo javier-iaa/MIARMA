@@ -34,18 +34,14 @@ function aka = autoarmaord( seg, varargin)
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 %
-% Version: 0.2
+% Version: 0.2.1 R2022
 %
 % Changes:
-% - Added parameter rep_lim that controls limit in the repetition.
-% - Several crash tests. 
-% - Added parameter mseg to trim the segment.
-% - The search is repeated if the tests are not fulfilled for the trimmed segment
-% and the max length segment is used in that case.
+% - Print the length of the segment used for finding the optimal order.
 %
 % Calls:
 %
-% Date: 27/04/2022
+% Date: 03/06/2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 verbflag = true;
@@ -95,6 +91,10 @@ else
         seg0 = seg;
         if ML>mseg
             seg = seg(1:mseg);
+        end
+
+        if verbflag
+            fprintf('\n%d points will be used for finding optimal order.\n', length(seg));
         end
     end
 end
