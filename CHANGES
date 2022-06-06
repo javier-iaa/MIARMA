@@ -1,3 +1,15 @@
+06-jun-22   * MIARMA 0.1.2.1 R2022
+	      New branch for modern releases of MATLAB.
+
+            * autoarmaord 0.2.1
+            - Print the length of the segment used for finding the optimal order.
+
+            * armaint 1.4.3
+            - pred.m is substituted by forecast function (inc. in R2012+)
+
+            * miarma_tr 0.1.2
+            - Minor fixes.
+
 01-jun-22   * MIARMA 0.1.2.1
             - autoarmaord now requires input rep_lim
             - autoarmaord uses optionally mseg parameter to trim the segment to calculate the optimal order in armaord. If the trimmed segment does not pass the tests the full segment is used.
