@@ -15,6 +15,9 @@ Optimization toolbox. \
 Signal Processing toolbox. \
 Statistics toolbox. 
 
+
+*Note: for recent versions of Matlab (R2022) use the R2022 branch of the repository instead of main. Please be aware that, although other versions from R2010b to R2022a should work too, they are not tested.*
+
 Citing MIARMA
 -------------
 If you use MIARMA or any of the subroutines included, please cite the following references [Pascual-Granado, Garrido and Suárez 2015, A&A, 575. A78](https://ui.adsabs.harvard.edu/abs/2015A%26A...575A..78P/abstract) and [Pascual-Granado et al. 2018, A&A, 614, A40](https://ui.adsabs.harvard.edu/abs/2018A%26A...614A..40P/abstract). Here are the BibTeX sources:
