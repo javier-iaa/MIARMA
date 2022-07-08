@@ -9,13 +9,14 @@ Files in folder \Plus are external tools developed by the same author for other 
 
 Requirements
 ------------
-Matlab R2010b or later release. \
+Matlab R2022a or later release. \
 System Identification toolbox. \
 Optimization toolbox. \
 Signal Processing toolbox. \
-Statistics toolbox. 
+Statistics toolbox.
 
-*Note: for recent versions of Matlab (R2022) use the R2022 branch of the repository instead of main. Please be aware that, although other versions from R2010b to R2022a should work too, they are not tested.*
+Memory requirement: 8 Gb / 16 Gb recommended.
+In some particular cases where big models are required to model the signal properly a lot of memory might be required. When that happens it might be necessary to turn off the MATLAB array size limit to avoid that an error is thrown. Note, however, that it is advised to not abuse of paging memory allocation. If needed, a memory expansion is always a better solution than using paging memory allocation.
 
 Citing MIARMA
 -------------
