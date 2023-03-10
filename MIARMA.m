@@ -87,15 +87,15 @@ if ischar( strin )
        
     % Here data is imported from an ASCII file having 3 columns: time, flux
     % and status
-    strdata = importdata(filename);
+    strin = importdata(filename);
     akaname = filename(1:end-4);
-    if isstruct(strdata)
-        strdata = strdata.data;
+    if isstruct(strin)
+        strin = strin.data;
     end
-    tc = strdata(:,1);
-    sc = strdata(:,2);
-    if size( strdata, 2)==3
-        statc = strdata(:,3);
+    tc = strin(:,1);
+    sc = strin(:,2);
+    if size( strin, 2)==3
+        statc = strin(:,3);
     else
         statc = zeros( size( tc) );
     end
