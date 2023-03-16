@@ -1,4 +1,4 @@
-function [isval, sta] = validate_arma( data, ord, facint, check )
+function [isval, sta, interp] = validate_arma( data, ord, facint, check, interp )
 % Function isval = validate_arma( data, ord, facint, check ) validate the
 % ARMA model of data <data> with order <ord> using the test <check>.
 %
@@ -28,14 +28,16 @@ function [isval, sta] = validate_arma( data, ord, facint, check )
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 %
-% Version: 0.2.1
+% Version: 0.2.2
 %
 % Changes: 
-% - Fixed minor bug in Ln 100.
+% - Added interp as input and output. The output of armaint is the
+% instruction with the highest computational cost so it make sense to have
+% the output available for other calls.
 %
 % Call: armaint.m
 %
-% Date: 21/03/2022
+% Date: 08/07/2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 L = length(data);
@@ -61,8 +63,9 @@ indf2 = L;
 seg2 = sn(indi2:indf2);
 
 % Interpolation
-[interp, ~] = armaint(seg1, seg2, ord, gapsize);
-
+if ~exist('interp', 'var')
+    [interp, ~] = armaint(seg1, seg2, ord, gapsize);
+end
 
 % Mean of the data segment
 m = mean(orig);
