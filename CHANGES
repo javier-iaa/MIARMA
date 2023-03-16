@@ -1,3 +1,13 @@
+16-mar-23   * MIARMA 0.1.2.2 R2022
+            - Fixed a bug occurring when the input is a filename
+	    - Added subroutine saveout.m for writing the output to an ASCII file
+
+	    * validate_arma 0.2.2
+	    - Added interp as input and output. The output of armaint is the instruction with the highest computational cost so it make sense to have the output available for other calls.
+
+	    * autoarmaord 0.2.2
+	    - Reuses interp from previous validate_arma call
+
 06-jun-22   * MIARMA 0.1.2.1 R2022
 	      New branch for modern releases of MATLAB.
 
