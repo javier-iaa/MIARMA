@@ -34,14 +34,15 @@ function aka = autoarmaord( seg, varargin)
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 %
-% Version: 0.2.1 R2022
+% Version: 0.2.2 R2022
 %
 % Changes:
-% - Print the length of the segment used for finding the optimal order.
+% - Reuses interp from previous validate_arma call.
 %
 % Calls:
+% validate_arma 0.2.2
 %
-% Date: 03/06/2022
+% Date: 08/07/2022
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 verbflag = true;
@@ -168,8 +169,8 @@ while lseg<=ML
         end
 
         % Validate model with optimal order
-        [isval_mse, sta_mse] = validate_arma( seg, ord, facint, 'mse' );
-        [isval_pc, sta_pc] = validate_arma( seg, ord, facint, 'pc' );
+        [isval_mse, sta_mse, interp] = validate_arma( seg, ord, facint, 'mse' );
+        [isval_pc, sta_pc] = validate_arma( seg, ord, facint, 'pc', interp );
         if isval_mse
             str_mse = 'cannot reject';
         else
