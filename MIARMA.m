@@ -40,7 +40,7 @@ function strout = MIARMA(strin)
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 %
-% Dependencies:      armaord_par.m   
+% Dependencies:                armaord_par.m   
 %                              armaord.m       
 %                              indgap.m        
 %                              lincorr.m       
@@ -51,17 +51,15 @@ function strout = MIARMA(strin)
 %                              pred.m
 %                              autoarmaord.m
 %                              fastCGSA.m
+%                              saveout.m
 %
-% Version: 0.1.2.1
+% Version: 0.1.2.2
 %
 % Changes: 
-% - autoarmaord now requires input rep_lim
-% - autoarmaord uses optionally mseg parameter to trim the segment to 
-% calculate the optimal order in armaord. If the trimmed segment does not pass
-% the tests the full segment is used.
-% - fraction_cgsa.m is no longer used, only fastCGSA.m is necessary
+% - Added subroutine saveout.m for writing the output to ASCII file
+% - Fixed a bug occurring when the input is a filename
 %
-% Date: 01/06/2022
+% Date: 16/03/2023
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Warning messages
@@ -76,33 +74,41 @@ warning_m1 = [ '\nWarning: interpolation finished before all gaps could be fille
 warning_m2 = '\nWarning: computing time could be up to several hours.\n\n';
 
 %% Some definitions
-numvers = '0.1.2.1';
+numvers = '0.1.2.2';
 
-lgaps0 = NaN;
-Llin = NaN;
+%lgaps0 = NaN;
+%Llin = NaN;
 
 %% Input data
 if ischar( strin )
     filename = strin;
+    strout.filename = filename;
        
     % Here data is imported from an ASCII file having 3 columns: time, flux
     % and status
-    strin = importdata(filename);
+    data = importdata(filename);
     akaname = filename(1:end-4);
-    if isstruct(strin)
-        strin = strin.data;
-    end
-    tc = strin(:,1);
-    sc = strin(:,2);
-    if size( strin, 2)==3
-        statc = strin(:,3);
+
+    % Depending on the characteristics of the file, importdata may
+    % generate a scalar structure that is here converted into a matrix
+    if isstruct(data)
+        instr.time = data.data(:,1);
+        instr.data = data.data(:,2);
     else
-        statc = zeros( size( tc) );
+        instr.time = data(:,1);
+        instr.data = data(:,2);
     end
 else
-    tc = strin.time;
-    sc = strin.data;
-    statc = strin.stat;
+    instr = strin;
+end
+
+tc = instr.time;
+sc = instr.data;
+
+if isfield(instr, 'stat')
+    statc = instr.stat;
+else
+    statc = zeros( size(tc) );
 end
 
 % Sampling regularization
@@ -124,15 +130,15 @@ L = length(timein);
 datout = datin;
 
 % Use default parameters
-if ~isfield(strin, 'params')
-    strin.params = 'default';
+if ~isfield(instr, 'params')
+    instr.params = 'default';
 end
 
 % Flag that controls screen output. Presently there are only two modes:
 % 'full' and 'simple'. In the future a 'minimal' mode will be implemented 
 % in order to suppress all output in screen.
-if isfield( strin.params, 'verbose')
-    verbose = strin.params.verbose;
+if isfield( instr.params, 'verbose')
+    verbose = instr.params.verbose;
 else
     verbose = 'none';
 end
@@ -215,94 +221,96 @@ cutoff_level = 100;
 auto_flag = true;
 
 % --- Input structure that changes parameter values ---
-if isfield( strin, 'params' )
+if isfield( instr, 'params' )
     
-    if isfield( strin.params, 'ft_corr' )
-        ft_corr = strin.params.ft_corr;
+    if isfield( instr.params, 'ft_corr' )
+        ft_corr = instr.params.ft_corr;
     end
         
     %  facmin must be >= 3
-    if isfield( strin.params, 'facmin')
-        facmin = strin.params.facmin;
+    if isfield( instr.params, 'facmin')
+        facmin = instr.params.facmin;
         if facmin < 3
             fprintf(2,' Warning: facmin < 3   This cannot go well!\n\n');
         end
     end
 
-    if isfield( strin.params ,'facmax')
-        facmax = strin.params.facmax;
+    if isfield( instr.params ,'facmax')
+        facmax = instr.params.facmax;
     end
 
-    if isfield( strin.params, 'npi')
-        npi = strin.params.npi;
+    if isfield( instr.params, 'npi')
+        npi = instr.params.npi;
     end
     
     % This must be at least d*facmin and, as min(d)=min(p+q)=pmin+0,
     % npz must be at least pmin*facmin
-    if isfield( strin.params, 'npz' )
-        npz = strin.params.npz;
+    if isfield( instr.params, 'npz' )
+        npz = instr.params.npz;
     end
     
     % It might be interesting to use a number higher than 2 since sometimes 
     % the number of gaps from one iteration to the next one is the same in 
     % spite of the gaps to fill being different.
-    if isfield( strin.params, 'repmax')
-        repmax = strin.params.repmax;
+    if isfield( instr.params, 'repmax')
+        repmax = instr.params.repmax;
     end
 
-    if isfield( strin.params, 'pmin')
-        pmin = strin.params.pmin;
+    if isfield( instr.params, 'pmin')
+        pmin = instr.params.pmin;
         auto_flag = false;
     end
 
-    if isfield( strin.params, 'pmax')
-        pmax = strin.params.pmax;
+    if isfield( instr.params, 'pmax')
+        pmax = instr.params.pmax;
         auto_flag = false;
     end
 
-    if isfield( strin.params, 'qmax')
-        qmax = strin.params.qmax;
+    if isfield( instr.params, 'qmax')
+        qmax = instr.params.qmax;
         auto_flag = false;
     end
     
-    if isfield( strin.params, 'mseg')
-        mseg = strin.params.mseg;
+    if isfield( instr.params, 'mseg')
+        mseg = instr.params.mseg;
     end    
     
-    if isfield( strin.params, 'always_int' )
-        always_int = strin.params.always_int;
+    if isfield( instr.params, 'always_int' )
+        always_int = instr.params.always_int;
     end
 
-    if isfield( strin.params, 'temp' )
-        temp = strin.params.temp;
+    if isfield( instr.params, 'temp' )
+        temp = instr.params.temp;
     end
         
-    if isfield(strin.params, 'ascii_struct')
-        ascii_struct = strin.params.ascii_struct;
+    if isfield(instr.params, 'ascii_struct')
+        ascii_struct = instr.params.ascii_struct;
     elseif exist('filename','var')
         ascii_struct = true;
     end
 
     % Full name for the file containing the Akaike matrix      
-    if isfield(strin.params, 'akaname')
-        akaname = strin.params.akaname;
+    if isfield(instr.params, 'akaname')
+        akaname = instr.params.akaname;
     end
     
-    if isfield(strin.params, 'facint')
-        facint = strin.params.facint;
+    if isfield(instr.params, 'facint')
+        facint = instr.params.facint;
     end
     
-    if isfield(strin.params, 'reco')
-        reco_flag = strin.params.reco;
+    if isfield(instr.params, 'reco')
+        reco_flag = instr.params.reco;
     end
      
-    if isfield(strin.params, 'cutoff')
-        cutoff_level = strin.params.cutoff;
+    if isfield(instr.params, 'cutoff')
+        cutoff_level = instr.params.cutoff;
     end
     
 end
 
 % Save parameters used in the computation in output structure for transparency
+strout.numvers = numvers;
+strout.ft_corr = ft_corr;
 strout.params.temp = temp;
 strout.params.always_int = always_int;
 strout.params.mseg = mseg;
@@ -322,9 +330,9 @@ strout.params.facint = facint;
 params = [facmin facmax npi pmin facint];
 
 %% Building the gap indexes
-if isfield(strin, 'igap')
+if isfield(instr, 'igap')
     % Indexes given as input
-    igap = strin.igap;
+    igap = instr.igap;
 
 else        
     % Gap indexes are calculated (first and last inside the gap)
@@ -357,18 +365,28 @@ else
 
     flagin = flaglin;
     igap = indgap(flagin);
+
+    % Number of linearly interpolated datapoints
+    lgaps = length(find(flagin~=0));
+    Llin = lgaps0 - lgaps;
+
+    % Save parameters in output structure
+    strout.lgaps0 = lgaps0;
+    strout.Llin = Llin;
+    strout.L = L;
+
     if isempty(igap)
+
         flagout = flagin;
         strout.timeout = timein;
         strout.datout = datout;
         strout.statout = flagout;
         strout.igap = igap;
+
+        saveout(strout);
+
         return
     end
-    
-    % Number of linearly interpolated datapoints
-    lgaps = length(find(flagin~=0));
-    Llin = lgaps0 - lgaps;
     
     % Correction of the status array for small data segments
     % If you want to disable this correction just set npz to zero
@@ -427,9 +445,9 @@ end
 strout.igap = igap;
 
 %% Search for the optimal order (p,q)
-if isfield( strin, 'aka')
+if isfield( instr, 'aka')
     % Akaike coefficient matrix given as input
-    aka = strin.aka;
+    aka = instr.aka;
     
 else
     % This gives the length of the largest segment without gaps
@@ -513,15 +531,14 @@ p = cp + pmin - 1;
 fprintf('\nOptimal order: [%d %d]\n\n', p, q); 
 
 % Outputs: gap indexes and Akaike coefficient matrix
-if ~ascii_struct
-    strout.aka = aka;
-    strout.igap = igap;
-    strout.timeout = timein;
-    strout.datout = datout;
-    strout.statout = flagin;
-    strout.ord = [p q];
-    strout.segord = seg;
-end
+
+strout.aka = aka;
+strout.igap = igap;
+strout.timeout = timein;
+strout.datout = datout;
+strout.statout = flagin;
+strout.ord = [p q];
+strout.segord = seg;
 
 pred_lim = 4000;
 faclim = floor( pred_lim/(p+q) );
@@ -898,8 +915,8 @@ end
 if ft_corr
     datout_corr = ftcorr(datout, flagin, 'cutoff', cutoff_level);
 else
-    if isfield( strin.params, 'ft_corr' )
-        if strin.params.ft_corr
+    if isfield( instr.params, 'ft_corr' )
+        if instr.params.ft_corr
             fprintf(2,'No FT correction can be applied due to the remaining gaps\n');
         end
     end
@@ -914,52 +931,18 @@ if reco_flag
 end
 
 %% Save output
-if ~ascii_struct
-    % This occurs only when MIARMA from desktop interface
 
-    strout.timeout = timein;
-    strout.datout = datout;
-    strout.statout = flagout;
-    if ft_corr
-        strout.datout_corr = datout_corr;
-    end
-    
+if ft_corr
+    strout.datout = datout_corr;
 else
-    if exist('filename','var')
-        fout = [ filename(1:end-4) '.agfs'];
-    else
-        fout = 'output.agfs';
-    end
-    fich = fopen(fout,'w');
+    strout.datout = datout;
+end
+
+strout.timeout = timein;
+strout.statout = flagout;
     
-    fprintf(fich,'# code: MIARMA\n');
-    fprintf(fich,'# version: %s\n', numvers);
-    fprintf(fich,'# model (p,q): %d %d\n',p,q);
-    fprintf(fich,'# length: %d\n',L);
-    fprintf(fich,'# gaps_arma: %d\n',lgaps0-Llin);
-    fprintf(fich,'# gaps_linear: %d\n',Llin);
-    fprintf(fich,'# facmin: %d\n',facmin);
-    fprintf(fich,'# facmax: %d\n',facmax);
-    fprintf(fich, '# facint: %d\n', facint);
-    fprintf(fich,'# npi: %d\n',npi);
-    fprintf(fich,'# npz: %d\n',npz);
-    fprintf(fich,'# niter: %d\n',repmax);
-    fprintf(fich,'# mseg: %d\n\n',mseg);
-    fprintf(fich,'x y z\n');
-    
-    if ft_corr
-        for i=1:L
-            fprintf(fich,'%16.12f %16.13f %d\n',...
-                timein(i),datout_corr(i),flagout(i));
-        end
-    else       
-        for i=1:L
-            fprintf(fich,'%16.12f %16.13f %d\n',...
-                timein(i),datout(i),flagout(i));
-        end
-    end
-    fclose(fich);
-    
+if ascii_struct
+    saveout(strout);
     fprintf('\n  Interpolation finished successfully.  \n');
 end
 
