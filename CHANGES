@@ -1,3 +1,6 @@
+28-mar-23   * MIARMA 0.1.2.2
+            - Minor fixes related to FT correction.
+
 01-jun-22   * MIARMA 0.1.2.1
             - autoarmaord now requires input rep_lim
             - autoarmaord uses optionally mseg parameter to trim the segment to calculate the optimal order in armaord. If the trimmed segment does not pass the tests the full segment is used.
