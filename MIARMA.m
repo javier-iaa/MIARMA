@@ -52,16 +52,12 @@ function strout = MIARMA(strin)
 %                              autoarmaord.m
 %                              fastCGSA.m
 %
-% Version: 0.1.2.1
+% Version: 0.1.2.2
 %
 % Changes: 
-% - autoarmaord now requires input rep_lim
-% - autoarmaord uses optionally mseg parameter to trim the segment to 
-% calculate the optimal order in armaord. If the trimmed segment does not pass
-% the tests the full segment is used.
-% - fraction_cgsa.m is no longer used, only fastCGSA.m is necessary
+% - Minor fixes.
 %
-% Date: 01/06/2022
+% Date: 28/03/2023
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Warning messages
@@ -76,7 +72,7 @@ warning_m1 = [ '\nWarning: interpolation finished before all gaps could be fille
 warning_m2 = '\nWarning: computing time could be up to several hours.\n\n';
 
 %% Some definitions
-numvers = '0.1.2.1';
+numvers = '0.1.2.2';
 
 lgaps0 = NaN;
 Llin = NaN;
@@ -520,7 +516,9 @@ if ~ascii_struct
     strout.datout = datout;
     strout.statout = flagin;
     strout.ord = [p q];
-    strout.segord = seg;
+    if exist('seg', 'var')
+        strout.segord = seg;
+    end
 end
 
 pred_lim = 4000;
@@ -660,7 +658,7 @@ else
     while numgap>1
         
         while (rep<repmax && l0>=2)
-            [datout, flagout, ~] = af_simp( datout, flagout, aka, igap, ...
+            [datout, flagout, ftc] = af_simp( datout, flagout, aka, igap, ...
                 params, j, 'lastr_aka', true );
             
             % Activate the FT correction with ftc flag from af_simp
@@ -814,7 +812,7 @@ if numgap>0
         while numgap>=1
 
             while (rep<repmax && l0>=2)
-                [datout, flagout, ~] = af_simp( datout, flagout, aka, igap, ...
+                [datout, flagout, ftc] = af_simp( datout, flagout, aka, igap, ...
                     params, j, 'lastr_aka', true, '1s' );
 
                 % Activate the FT correction with ftc flag from af_simp
