@@ -3,6 +3,9 @@ function interp = polintre(seg1, seg2, np, ord)
 % polynomial fit with order ord. Estimate statistical properties of the
 % residuals and add a stochastic component mimicking the noise.
 %
+% Note: polintre is prepared to make forward and backward extrapolation too
+% by design.
+%
 % Version: 0.1
 % Changes from the last version:
 % - Optimization and minor fixes.
@@ -11,10 +14,6 @@ function interp = polintre(seg1, seg2, np, ord)
 % Author(s): Javier Pascual-Granado
 % Date: 04/03/2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% Weights for the interpolation
-% wp = 1/(np+1);
-% w = wp:wp:(1-wp)
 
 % Prepare data
 [fil,~] = size(seg1);

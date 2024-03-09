@@ -9,15 +9,14 @@ function [data1, flag1] = lincorr(data, flag, ind, npi)
 % Ouputs:  data1 - time series after lin.interpolation
 %                flag1 - new status array
 %
-% Version: 1.1
+% Version: 1.2
 %
 % Changes from the last version:
-% - Code completely refurbished.
-% - Now using previous interpolated data points
+% - FIX: ln 86-94, extrapolation at borders is possible
 %
 % Calls: polintre.m
 % Author(s): Javier Pascual-Granado
-% Date: 17/05/2021
+% Date: 09/03/2024
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Order used for the polynomial interpolation
@@ -39,7 +38,7 @@ N = length(data);
 % Change column into row
 data1 = reshape(data1,1,N);
 
-if isempty(ind)==1,
+if isempty(ind)
     return;
 end
 
@@ -84,7 +83,15 @@ while ini_gap_ind <= last_gap_ind
         
         seg2 = data1( subi2 );
 
-        if isempty(seg1) || isempty(seg2),
+        if isempty(seg1) && isempty(seg2)
+            ind(1:2) = [];
+            ini_gap_ind = next_gap_ind;
+            end_gap_ind = ind(2);
+            if next_gap_ind==last_gap_ind
+                next_gap_ind = [];
+            else
+                next_gap_ind = ind(3);
+            end
             continue;
         end
    
