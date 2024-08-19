@@ -1,3 +1,13 @@
+15-ago-24   * MIARMA 0.1.2.3 R2024
+            - Parameter repmax is no longer necessary and removed, this is an enhancement that optimize the efficiency of the algorithm a bit.
+            - Some tests have been performed to check whether Matlab R2024a is compatible. From now on this branch will be for R2024.
+
+            * autoarmaord 0.2.3
+            - aka matrix is recalculated from the lowest orders when the data segment used for modelling is replaced.
+
+            * armaord 2.0
+            - The original algorithm is optimised for computational efficiency and the main loop is now parallelised, considerably improving the computation time when multiple cores are used.
+
 16-mar-23   * MIARMA 0.1.2.2 R2022
             - Fixed a bug occurring when the input is a filename
 	    - Added subroutine saveout.m for writing the output to an ASCII file
