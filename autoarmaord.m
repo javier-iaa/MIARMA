@@ -34,15 +34,16 @@ function aka = autoarmaord( seg, varargin)
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 %
-% Version: 0.2.2 R2022
+% Version: 0.2.3 R2024
 %
 % Changes:
-% - Reuses interp from previous validate_arma call.
+% - aka matrix is recalculated from the lowest orders when the data segment
+% used for modelling is replaced.
 %
 % Calls:
 % validate_arma 0.2.2
 %
-% Date: 08/07/2022
+% Date: 08/19/2024
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 verbflag = true;
@@ -205,4 +206,9 @@ while lseg<=ML
         return
     end
     
+    pmax = dpmax;
+    qmax = dqmax;
+    p0 = 0;
+    q0 = 0;
+    cont = 0;
 end
