@@ -34,16 +34,15 @@ function aka = autoarmaord( seg, varargin)
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 %
-% Version: 0.2.3 R2024
+% Version: 0.2.4 R2024
 %
 % Changes:
-% - aka matrix is recalculated from the lowest orders when the data segment
-% used for modelling is replaced.
+% - Optimized for the new version of armaord and the use of ppmax, qpmax
 %
 % Calls:
 % validate_arma 0.2.2
 %
-% Date: 08/19/2024
+% Date: 08/28/2024
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 verbflag = true;
@@ -123,27 +122,27 @@ while lseg<=ML
         % Calculate Akaike matrix
         if exist( 'akaname', 'var' )
             if verbflag
-                aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
+                [aka, ppmax, qpmax] = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
                     'qmax', qmax, 'w', akaname);
             else
-                aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
+                [aka, ppmax, qpmax] = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
                 'qmax', qmax, 'verbose', false, 'w', akaname);
             end
 
         elseif temp
             if verbflag
-                aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
+                [aka, ppmax, qpmax] = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
                     'qmax', qmax, 'w' );
             else
-                aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
+                [aka, ppmax, qpmax] = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
                 'qmax', qmax, 'verbose', false, 'w' );
             end
         else
             if verbflag
-                aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
+                [aka, ppmax, qpmax] = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
                     'qmax', qmax);
             else
-                aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
+                [aka, ppmax, qpmax] = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
                 'qmax', qmax, 'verbose', false);
             end
         end
@@ -153,7 +152,7 @@ while lseg<=ML
         q = cq - 1;
         p = cp + pmin - 1;
         ord = [p q];
-        fprintf('\nOptimal order is (%d, %d)\n', p, q);
+        fprintf('\nOptimal order is [%d %d]\n', p, q);
 
         % Stop condition: if the same order is found in more than rep_lim iterations
         if exist('rep_lim', 'var')
@@ -186,6 +185,10 @@ while lseg<=ML
         fprintf('PC test %s null hypothesis with h=%4.1e\n', str_pc, sta_pc);
         isval = isval_mse && isval_pc;
 
+        if ppmax>pmax | qpmax>qmax
+            pmax = ppmax;
+            qmax = qpmax;
+        end
         pmax = pmax + dpmax;
         qmax = qmax + dqmax;
 
@@ -202,6 +205,8 @@ while lseg<=ML
     if lseg<ML
         seg = seg0;
         lseg = ML;
+        fprintf(['\nRe-initializing the search of the optimal order with the ' ...
+            'longest data segment, N=%d datapoints\n'], lseg);
     else
         return
     end
