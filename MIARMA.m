@@ -53,12 +53,14 @@ function strout = MIARMA(strin)
 %                              fastCGSA.m
 %                              saveout.m
 %
-% Version: 0.1.2.3
+% Version: 0.1.2.4
 %
 % Changes: 
-% - repmax is removed
+% - FIX: repmax is effectively removed now
+% - save output in folder
+% - Other minor fixes and improvements
 %
-% Date: 15/08/2024
+% Date: 28/08/2024
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Warning messages
@@ -67,13 +69,13 @@ function strout = MIARMA(strin)
 warning('off','all')
 
 warning_m1 = [ '\nWarning: interpolation finished before all gaps could be filled.' ...
-                '\nTry different values in the parameter structure e.g. facint, facmin, npi, repmax' ...
+                '\nTry different values in the parameter structure e.g. facint, facmin, npi' ...
                 ', also others like facmax or mseg if nonstationarity is suspected.\n\n'];
             
 warning_m2 = '\nWarning: computing time could be up to several hours.\n\n';
 
 %% Some definitions
-numvers = '0.1.2.3';
+numvers = '0.1.2.4';
 
 %lgaps0 = NaN;
 %Llin = NaN;
@@ -161,6 +163,14 @@ end
 
 % --- Default values for parameters if no input is given ---
 
+% Output folder (numbered)
+resList = dir('res*');
+if ~isempty(resList)
+    lastFolder = resList(end).name;
+    numFolder = str2double( lastFolder(4:end) );
+    resFolder = sprintf('res%0.3d', numFolder+1);
+end
+
 % Maximum length of the segment used to calculate ARMA order
 % If the optimal model does not pass the tests this will be increased until the 
 % maximum possible length
@@ -218,7 +228,13 @@ auto_flag = true;
 
 % --- Input structure that changes parameter values ---
 if isfield( instr, 'params' )
+
+    %  Set the output folder
+    if isfield( instr.params, 'folder' )
+        resFolder = instr.params.folder;
+    end
     
+    %  Fourier correction
     if isfield( instr.params, 'ft_corr' )
         ft_corr = instr.params.ft_corr;
     end
@@ -300,6 +316,7 @@ end
 % Save parameters used in the computation in output structure for transparency
 strout.numvers = numvers;
 strout.ft_corr = ft_corr;
+strout.params.folder = resFolder;
 strout.params.temp = temp;
 strout.params.always_int = always_int;
 strout.params.mseg = mseg;
@@ -312,10 +329,18 @@ strout.params.facmax = facmax;
 strout.params.facmin = facmin;
 strout.params.ascii_struct = ascii_struct;
 strout.params.facint = facint;
-% strout.params.akaname = akaname;
+if exist("akaname", 'var')
+    strout.params.akaname = akaname;
+end
 
 % List of parameters for af_simp
 params = [facmin facmax npi pmin facint];
+
+%% Prepare folder
+if ~isfolder(resFolder)
+    mkdir(resFolder);
+end
+cd(resFolder);
 
 %% Building the gap indexes
 if isfield(instr, 'igap')
@@ -411,7 +436,6 @@ else
             fprintf(fich, '# facint: %d\n', facint);
             fprintf(fich, '# npi: %d\n', npi);
             fprintf(fich, '# npz: %d\n', npz);
-            fprintf(fich, '# niter: %d\n', repmax);
             fprintf(fich, '# mseg: %d\n', mseg);
             fprintf(fich, 'x y z\n');
    
@@ -667,19 +691,11 @@ else
         j = j + 1;
         
         % Termination condition: the number of gaps is not repeated 
-        % more than twice in consecutive iterations
+        % more than twice in cornsecutive iterations
         if l1==l0
             break;
         else
             l0 = l1;
-        end
-        
-        % Every iteration begins from the opposite side of the series
-        if (rep<repmax && l0>=2)
-            datout = flipud( datout );
-            flagout = fliplr( flagout );
-            igap = L - igap + 1;
-            igap = fliplr( igap );
         end
 
         if mod(j,2)==1 && j>1
@@ -884,6 +900,8 @@ if ascii_struct
     saveout(strout);
     fprintf('\n  Interpolation finished successfully.  \n');
 end
+
+cd ..
 
 end
 % END
