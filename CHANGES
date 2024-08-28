@@ -1,3 +1,15 @@
+28-ago-24   * MIARMA 0.1.2.4 R2024
+            - FIX: repmax is effectively removed now
+            - save output in folder
+            - Other minor fixes and improvements
+
+            * autoarmaord 0.2.4
+            - Optimized for the new version of armaord and the use of ppmax, qpmax
+
+            * armaord 2.1
+            - FIX: too many header lines in aka file
+            - ppmax and qqmax outputs are the pmax, qmax re-evaluated from the akaike coefficient matrix in filename
+
 15-ago-24   * MIARMA 0.1.2.3 R2024
             - Parameter repmax is no longer necessary and removed, this is an enhancement that optimize the efficiency of the algorithm a bit.
             - Some tests have been performed to check whether Matlab R2024a is compatible. From now on this branch will be for R2024.
@@ -6,7 +18,7 @@
             - aka matrix is recalculated from the lowest orders when the data segment used for modelling is replaced.
 
             * armaord 2.0
-            - The original algorithm is optimised for computational efficiency and the main loop is now parallelised, considerably improving the computation time when multiple cores are used.
+            - The original algorithm is optimised for computational efficiency and the main loop is now parallelised, considerably improving the computation time when multiple cores are used. In previous versions of the code there were conditionals to extract the akaike coefficients from aka files containing matrices with different dimensions. These conditionals have been removed because in MIARMA/autoarmaord the matrix is increased always in multiples of pmax,qmax. Although these conditionals might be useful for test purposes and applications outside MIARMA, in practice, it is observed that the exploration of the optimal order works more efficiently in this way. 
 
 16-mar-23   * MIARMA 0.1.2.2 R2022
             - Fixed a bug occurring when the input is a filename
