@@ -11,16 +11,24 @@ function varargout = armaord(S, varargin)
 %
 %   Outputs:
 %   varargout{1} = Akaike matrix
-%   varargout{2} = pmin
-%   varargout{3} = pmax
+%   varargout{2} = ppmax
+%   varargout{3} = qpmax
 %   varargout{4} = size of the segment evaluated
+%
+% where ppmax and qqmax are the pmax and qmax re-evaluated from the akaike
+% coefficient matrix in filename
 %
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 %
-% Version: 2.0
+% Version: 2.1
 %
-% Date: 8/19/2024
+% Changes:
+% - FIX: too many header lines in aka file
+% - ppmax and qqmax outputs are the pmax, qmax re-evaluated from the akaike
+% coefficient matrix in filename
+%
+% Date: 8/28/2024
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Default values and initial setup
@@ -69,12 +77,11 @@ r = pmax - pmin + 1;
 c = qmax + 1;
 akamat = NaN(r, c);
 
-fprintf('\n Coefficient p in range [%d,%d] and q in [0,%d]\n', pmin, pmax, qmax);
+fprintf('Coefficient p in range [%d,%d] and q in [0,%d]\n', pmin, pmax, qmax);
 
 % Optional file handling and load previous computations
 iw = find(strcmp(varargin,'w'), 1);
 
-models_loaded = 0;
 models_to_calc = r * c;
 
 if ~isempty(iw)
@@ -85,9 +92,9 @@ if ~isempty(iw)
 
     nomfich = sprintf('%s_%d%s', idname, N, ext);    
     if isfile(nomfich)
-        fprintf('Loading previous calculations from %s\n', nomfich);
+        fprintf('\nLoading previous calculations from %s\n', nomfich);
         
-        % Read and skip the header
+        % Read the header
         fid = fopen(nomfich, 'r');
         k=1;
         f = fgetl(fid);
@@ -110,6 +117,17 @@ if ~isempty(iw)
         % Count loaded models
         models_loaded = sum(~isnan(existingData(:)));
         models_to_calc = models_to_calc - models_loaded;
+
+        if models_to_calc<=0
+            fprintf(' %d models loaded, 0 need to be calculated.\n\n', models_loaded);
+            ppmax = loaded_rows + pmin - 1;
+            qpmax = loaded_cols - 1;
+            varargout = {akamat, ppmax, qpmax, N};
+            fprintf('Extended Akaike matrix with pmax %d and qmax %d\n', ppmax, qpmax);
+            return
+        else
+            fprintf(' %d models loaded, %d need to be calculated.\n\n', models_loaded, models_to_calc);
+        end
     end
 
     fichw = fopen(nomfich, 'w');
@@ -119,14 +137,17 @@ if ~isempty(iw)
             fprintf(fichw, [ header{k} '\n' ]);
         end
     end
-    headline = sprintf('%03.f_%03.f_%03.f\n\n',pmin,pmax,qmax);
-    fprintf(fichw, headline);
+    C = textscan(header{end},'%03.f_%03.f_%03.f');
+    if C{2}<pmax | C{3}<qmax
+        headline = sprintf('%03.f_%03.f_%03.f\n',pmin, pmax, qmax);
+        fprintf(fichw, headline);
+    end
+    fprintf(fichw, '\n');
     fclose(fichw);
 end
 
-fprintf(' %d models loaded, %d need to be calculated.\n\n', models_loaded, models_to_calc);
-
 %% Main parallel loop to calculate missing Akaike coefficients
+
 tic;
 parfor i = 0:qmax
     local_akam = akamat(:, i+1);  % Load existing data if any
@@ -157,5 +178,5 @@ if ~isempty(iw)
 end
 
 % Prepare outputs
-varargout = {akamat, pmin, pmax, N};
+varargout = {akamat, pmax, qmax, N};
 end
