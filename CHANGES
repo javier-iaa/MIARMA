@@ -1,3 +1,9 @@
+05-sep-24   * MIARMA 0.1.2.5 R2024
+	    - FIX: minor issue with folders
+
+	    * armaord 2.1
+	    - FIX: failed when no previous aka file was found in folder
+
 28-ago-24   * MIARMA 0.1.2.4 R2024
             - FIX: repmax is effectively removed now
             - save output in folder
