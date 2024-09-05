@@ -53,14 +53,12 @@ function strout = MIARMA(strin)
 %                              fastCGSA.m
 %                              saveout.m
 %
-% Version: 0.1.2.4
+% Version: 0.1.2.5
 %
 % Changes: 
-% - FIX: repmax is effectively removed now
-% - save output in folder
-% - Other minor fixes and improvements
+% - FIX: minor issue with folder
 %
-% Date: 28/08/2024
+% Date: 05/09/2024
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Warning messages
@@ -75,7 +73,7 @@ warning_m1 = [ '\nWarning: interpolation finished before all gaps could be fille
 warning_m2 = '\nWarning: computing time could be up to several hours.\n\n';
 
 %% Some definitions
-numvers = '0.1.2.4';
+numvers = '0.1.2.5';
 
 %lgaps0 = NaN;
 %Llin = NaN;
@@ -169,6 +167,8 @@ if ~isempty(resList)
     lastFolder = resList(end).name;
     numFolder = str2double( lastFolder(4:end) );
     resFolder = sprintf('res%0.3d', numFolder+1);
+else
+    resFolder = 'res001';
 end
 
 % Maximum length of the segment used to calculate ARMA order
