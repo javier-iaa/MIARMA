@@ -24,11 +24,9 @@ function varargout = armaord(S, varargin)
 % Version: 2.1
 %
 % Changes:
-% - FIX: too many header lines in aka file
-% - ppmax and qqmax outputs are the pmax, qmax re-evaluated from the akaike
-% coefficient matrix in filename
+% - BUGFIX: failed when no previous aka file was found in folder
 %
-% Date: 8/28/2024
+% Date: 2/09/2024
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Default values and initial setup
@@ -84,6 +82,8 @@ iw = find(strcmp(varargin,'w'), 1);
 
 models_to_calc = r * c;
 
+headline = sprintf('%03.f_%03.f_%03.f\n',pmin, pmax, qmax);
+
 if ~isempty(iw)
     idname = 'temp';
     if length(varargin) > iw
@@ -103,7 +103,6 @@ if ~isempty(iw)
             k = k+1;
             f = fgetl(fid);
         end
-        fclose(fid);
         nh = length(header);
         
         % Read the data (skip the header)
@@ -128,22 +127,28 @@ if ~isempty(iw)
         else
             fprintf(' %d models loaded, %d need to be calculated.\n\n', models_loaded, models_to_calc);
         end
-    end
+ 
+        fichw = fopen(nomfich, 'w');
 
-    fichw = fopen(nomfich, 'w');
-    % Header info for aka file
-    if isfile(nomfich) && exist('nh','var')
         for k=1:nh
-            fprintf(fichw, [ header{k} '\n' ]);
+            fprintf(fichw, [ header{k} '\n']);
         end
+
+        % Extract model indexes from last row
+        C = textscan(header{end},'%03.f_%03.f_%03.f');
+        if C{2}<pmax | C{3}<qmax
+            fprintf(fichw, headline);
+        end
+        fprintf(fichw, '\n');
+
+    else
+        fid = fopen(nomfich, 'w');
+
+        % Header info for aka file
+        fprintf(fid, headline);
+        fprintf(fid, '\n');
+        fclose(fid);
     end
-    C = textscan(header{end},'%03.f_%03.f_%03.f');
-    if C{2}<pmax | C{3}<qmax
-        headline = sprintf('%03.f_%03.f_%03.f\n',pmin, pmax, qmax);
-        fprintf(fichw, headline);
-    end
-    fprintf(fichw, '\n');
-    fclose(fichw);
 end
 
 %% Main parallel loop to calculate missing Akaike coefficients
