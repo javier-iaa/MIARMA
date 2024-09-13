@@ -19,6 +19,14 @@ function strout = MIARMA(strin)
 %           If instead of strin, a filename string is passed as input, a two or three
 %           columns data file with floating number notation is assumed.
 %
+%           An .ini file containing the parameters can be optionally passed
+%           to the program. The only requirements for the ini file are
+%           these:
+%           - each parameter on a different line following this notation:
+%           - name value
+%           - all parameters should have a value (1 or 0 if logical)
+%           - last line must be a carriage return
+%
 %            Consult the documentation for a detailed description of each 
 %            of these parameters.
 %
@@ -40,8 +48,7 @@ function strout = MIARMA(strin)
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 %
-% Dependencies:                armaord_par.m   
-%                              armaord.m       
+% Dependencies:                armaord.m       
 %                              indgap.m        
 %                              lincorr.m       
 %                              sing.m
@@ -53,12 +60,16 @@ function strout = MIARMA(strin)
 %                              fastCGSA.m
 %                              saveout.m
 %
-% Version: 0.1.2.5
+% Version: 0.1.2.6
 %
-% Changes: 
-% - FIX: minor issue with folder
+% Changes:
+% - Ini file: when the input of MIARMA is a filename it search for an .ini
+% file with the same name. If it is found MIARMA read the list of
+% parameters from the file and initializes the params structure.
 %
-% Date: 05/09/2024
+% - FIX: when input is a filename the result folder has the same name.
+%
+% Date: 12/09/2024
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Warning messages
@@ -73,7 +84,7 @@ warning_m1 = [ '\nWarning: interpolation finished before all gaps could be fille
 warning_m2 = '\nWarning: computing time could be up to several hours.\n\n';
 
 %% Some definitions
-numvers = '0.1.2.5';
+numvers = '0.1.2.6';
 
 %lgaps0 = NaN;
 %Llin = NaN;
@@ -86,7 +97,10 @@ if ischar( strin )
     % Here data is imported from an ASCII file having 3 columns: time, flux
     % and status
     data = importdata(filename);
+
+    % Name without extension
     akaname = filename(1:end-4);
+    resFolder = akaname;
 
     % Depending on the characteristics of the file, importdata may
     % generate a scalar structure that is here converted into a matrix
@@ -97,6 +111,33 @@ if ischar( strin )
         instr.time = data(:,1);
         instr.data = data(:,2);
     end
+
+    % Look for ini file to import parameters
+    inifile = sprintf("%s.ini", akaname);
+    if isfile(inifile)
+
+        % List of available parameters
+        parlist = {'mem', 'folder', 'ft_corr', 'facmin', 'facmax', 'npi', ...
+            'npz', 'pmin', 'pmax', 'qmax', 'mseg', 'always_int', 'temp', ...
+            'ascii_struct', 'akaname', 'facint', 'reco', 'cutoff'};
+        
+        ini = fopen(inifile, "r");
+        iniln = fgetln(ini);
+
+        while ~strcmp(iniln, "\n")
+            inipar = split(iniln);
+            parname = inipar{1};
+            parval = inipar{2};
+            if any( strcmp(parname, parlist) )
+                if ~any( strcmp(parname, {'folder', 'akaname'}) )
+                    parval = str2double(parval);
+                end
+                instr.params.(parname) = parval;
+            end
+            iniln = fgetl(ini);
+        end
+    end
+
 else
     instr = strin;
 end
@@ -150,7 +191,7 @@ if verbflag
     fprintf(2, '\n #################################################\n');
     fprintf(2, ' #                                               #\n');
     fprintf(2, ' #                 MIARMA  %s                 #\n', numvers);
-    fprintf(2, ' #  by J.Pascual-Granado, IAA-CSIC, Spain. 2021  #\n');
+    fprintf(2, ' #  by J.Pascual-Granado, IAA-CSIC, Spain. 2024  #\n');
     fprintf(2, ' #              License GNU GPL v3.0             #\n');
     fprintf(2, ' #                                               #\n');
     fprintf(2, ' #################################################\n');
@@ -162,14 +203,23 @@ end
 % --- Default values for parameters if no input is given ---
 
 % Output folder (numbered)
-resList = dir('res*');
-if ~isempty(resList)
-    lastFolder = resList(end).name;
-    numFolder = str2double( lastFolder(4:end) );
-    resFolder = sprintf('res%0.3d', numFolder+1);
-else
-    resFolder = 'res001';
+% Important: if there exists already a result folder with another name 
+% there must be param.folder input parameter string setting it
+if ~ischar( strin )
+    resList = dir('res*');
+    if ~isempty(resList)
+        lastFolder = resList(end).name;
+        numFolder = str2double( lastFolder(4:end) );
+        resFolder = sprintf('res%0.3d', numFolder+1);
+    else
+        resFolder = 'res001';
+    end
 end
+
+% This is the physical memory available. In case, it is different change
+% this number. Matlab R2024 is not prepared to determine this in Mac so I
+% prefer to make the program system agnostic by setting this number myself.
+mem = 16;
 
 % Maximum length of the segment used to calculate ARMA order
 % If the optimal model does not pass the tests this will be increased until the 
@@ -228,6 +278,11 @@ auto_flag = true;
 
 % --- Input structure that changes parameter values ---
 if isfield( instr, 'params' )
+
+    % Total system memory (to avoid overflow issues)
+    if isfield( instr.params, 'mem')
+        mem = instr.params.mem;
+    end
 
     %  Set the output folder
     if isfield( instr.params, 'folder' )
@@ -329,12 +384,13 @@ strout.params.facmax = facmax;
 strout.params.facmin = facmin;
 strout.params.ascii_struct = ascii_struct;
 strout.params.facint = facint;
+strout.params.mem = mem;
 if exist("akaname", 'var')
     strout.params.akaname = akaname;
 end
 
 % List of parameters for af_simp
-params = [facmin facmax npi pmin facint];
+params = [facmin facmax npi pmin facint mem];
 
 %% Prepare folder
 if ~isfolder(resFolder)
@@ -515,21 +571,21 @@ else
     else
         if exist('akaname', 'var')
             if verbflag
-                aka = autoarmaord( seg, 'w', akaname, 'rep', rep_lim, 'mseg', mseg);
+                aka = autoarmaord( seg, 'w', akaname, 'rep', rep_lim, 'mseg', mseg, 'mem', mem);
             else
-                aka = autoarmaord( seg, 'verbose', false, 'w', akaname, 'rep', rep_lim, 'mseg', mseg);
+                aka = autoarmaord( seg, 'verbose', false, 'w', akaname, 'rep', rep_lim, 'mseg', mseg, 'mem', mem);
             end
         elseif temp
             if verbflag
-                aka = autoarmaord( seg, 'w', 'rep', rep_lim, 'mseg', mseg);
+                aka = autoarmaord( seg, 'w', 'rep', rep_lim, 'mseg', mseg, 'mem', mem);
             else
-                aka = autoarmaord( seg, 'verbose', false, 'w', 'rep', rep_lim, 'mseg', mseg);
+                aka = autoarmaord( seg, 'verbose', false, 'w', 'rep', rep_lim, 'mseg', mseg, 'mem', mem);
             end
         else
             if verbflag
-                aka = autoarmaord( seg, 'rep', rep_lim, 'mseg', mseg);
+                aka = autoarmaord( seg, 'rep', rep_lim, 'mseg', mseg, 'mem', mem);
             else
-                aka = autoarmaord( seg, 'verbose', false, 'rep', rep_lim, 'mseg', mseg);
+                aka = autoarmaord( seg, 'verbose', false, 'rep', rep_lim, 'mseg', mseg, 'mem', mem);
             end
         end
     end
