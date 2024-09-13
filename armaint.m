@@ -1,24 +1,32 @@
-function [interp, go] = armaint(seg1, seg2, ord, N2)
-% function [interp,go] = armaint(seg1, seg2, ord, N2) interpolates N2
+function [interp, go] = armaint(seg1, seg2, ord, N2, mem)
+% function [interp,go] = armaint(seg1, seg2, ord, N2, mem) interpolates N2
 % data points between the segments seg1 and seg2 using ARMA models.
 % To generate the output segment interp a triangular weight is used for
 % both segments.
-% Inputs:   seg1 - left data segment
+% Inputs:       seg1 - left data segment
 %               seg2 - right data segment
 %               ord - ARMA (p,q) orders
 %               N2 - length of the gap
+%               mem - is an optional input used to limit memory use
+%
 % Outputs:      interp - interpolated segment
 %               go - true when the interpolation works and false otherwise
 %
-% Version: 1.4.3 - R2022
+% Version: 1.4.4 - R2024
 %
 % Changes from the last version:
-% - pred.m is substituted by forecast 
+% - Added limit in segment length to avoid memory overflow when the number
+% of free parameters of the model is very high.
 %
 %  Calls: sigma_clip.m
 %  Author(s): Javier Pascual-Granado
-%  Date: 03/06/2022
+%  Date: 13/09/2024
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Default value for mem in Gb
+if ~exist('mem','var')
+    mem = 16;
+end
 
 go = true;
 interp = NaN;
@@ -78,7 +86,7 @@ opt = forecastOptions('InitialCondition', 'e');
 %% Preparing data
 % Stationarity is assumed
 sigma = std([seg1; seg2]);
-if isinf(sigma)==1
+if isinf(sigma)
     fprintf('Infinite deviation error\n');
     interp = NaN(1,N2);
     go = false;
@@ -96,6 +104,19 @@ elseif ~isempty(find(isnan(seg1),1))
     if fil==1
         seg2 = seg2';
     end
+end
+
+po = ord(1);
+
+% This is approx. the segment limit to avoid a memory overflow
+lim_segsize = floor( mem/(8*(po^3 + 4*po^2 + po)/1024^3) - 10 );
+
+if length(seg1) > lim_segsize
+    seg1 = tail(seg1, lim_segsize);
+end
+
+if length(seg2) > lim_segsize
+    seg2 = head(seg2, lim_segsize);
 end
 
 % Weights
