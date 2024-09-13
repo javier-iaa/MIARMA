@@ -21,6 +21,7 @@ function [datout, flagout, ftc] = af_simp(datin, flagin, aka, ind1, params, vara
 %              pmin - inf. limit por the AR order
 %              fc - min. ratio between segment length and number of 
 %                data points to interpolate inside the gap
+%              mem - available memory in Gb
 % 
 %           varargin{1} must be the iteration number iter
 %              
@@ -39,14 +40,14 @@ function [datout, flagout, ftc] = af_simp(datin, flagin, aka, ind1, params, vara
 %
 % Calls:   armaint.m
 %
-% Version: 0.4.2
+% Version: 0.4.3
 %
 % Changes from the last version: 
-% - Progress numbers supressed (it is more important for armaord).
+% - Parameter mem introduced to avoid overflow.
 % 
 % Author: Javier Pascual-Granado
 %
-% Date: 15/04/2022
+% Date: 12/09/2024
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Flag to activate the FT correction in case armaint fails
@@ -65,6 +66,7 @@ npi = params(3);
 pmin = params(4);
 fc = params(5);
 iter = varargin{1};
+mem = params(6);
 
 lastr_aka_flag = find( strcmp(varargin,'lastr_aka'), 1 );
 if ~isempty(lastr_aka_flag)
@@ -441,7 +443,7 @@ while ind1f>=0,
 %%  Interpolation
     
     % Interpolation algorithm. go indicates whether it was possible or not
-    [interp, go] = armaint(seg1, seg2, ord, np);
+    [interp, go] = armaint(seg1, seg2, ord, np, mem);
     
     % Finally the interpolated segment is inserted in datout
     if go
@@ -465,7 +467,7 @@ while ind1f>=0,
                 q = cq - 1;
                 p = cp + pmin - 1;
                 ord = [p q];
-                [interp, go] = armaint(seg1, seg2, ord, np);
+                [interp, go] = armaint(seg1, seg2, ord, np, mem);
                 if go
                     datout(ind1(1):ind1(2)) = interp;
                     flagout(ind1(1):ind1(2)) = 0;
