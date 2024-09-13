@@ -1,3 +1,19 @@
+13-sep-24   * MIARMA 0.1.2.6 R2024
+	    - Ini file: when the input of MIARMA is a filename it search for an .ini file with the same name. If it is found MIARMA read the list of parameters from the file and initializes the params structure.
+	    - FIX: when input is a filename the result folder has the same name.
+
+	    * af_simp 0.4.3 R2024
+	    - Parameter mem introduced to avoid memory overflow.
+
+	    * armaint 1.4.4 R2024
+	    - Added limit in segment length to avoid memory overflow when the number of free parameters of the model is very high.
+
+	    * autoarmaord 0.2.3 R2024
+	    - Optimized for the new version of armaord and the use of ppmax, qpmax 
+
+	    * validate_arma 0.2.3 R2024
+	    - Added limit in segment length to avoid memory overflow when the number of free parameters of the model is very high.
+
 05-sep-24   * MIARMA 0.1.2.5 R2024
 	    - FIX: minor issue with folders
 
