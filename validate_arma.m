@@ -1,4 +1,4 @@
-function [isval, sta, interp] = validate_arma( data, ord, facint, check, interp )
+function [isval, sta, interp] = validate_arma( data, ord, facint, check, memtot, interp )
 % Function isval = validate_arma( data, ord, facint, check ) validate the
 % ARMA model of data <data> with order <ord> using the test <check>.
 %
@@ -28,16 +28,15 @@ function [isval, sta, interp] = validate_arma( data, ord, facint, check, interp 
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 %
-% Version: 0.2.2
+% Version: 0.2.3
 %
 % Changes: 
-% - Added interp as input and output. The output of armaint is the
-% instruction with the highest computational cost so it make sense to have
-% the output available for other calls.
+% - Added limit in segment length to avoid memory overflow when the number
+% of free parameters of the model is very high.
 %
 % Call: armaint.m
 %
-% Date: 08/07/2022
+% Date: 12/09/2024
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 L = length(data);
@@ -55,12 +54,26 @@ sn = ( data - mean(data) )/std(data);
 % Data segments
 gapsize = fix( L / (2*facint + 1) );
 segsize = facint*gapsize;
+
+po = ord(1);
+
+% This is approx. the segment limit to avoid an overflow
+lim_segsize = floor( memtot/(8*(po^3 + 4*po^2 + po)/1024^3) - 10 );
+
+if segsize > lim_segsize
+    segsize = lim_segsize;
+end
+
 indf1 = segsize;
 seg1 = sn(1:indf1);
 orig = sn( (indf1+1):(indf1+gapsize) );
 indi2 = indf1 + gapsize + 1;
 indf2 = L;
 seg2 = sn(indi2:indf2);
+
+if length(seg2) > lim_segsize
+    seg2 = seg2(1:lim_segsize);
+end
 
 % Interpolation
 if ~exist('interp', 'var')
