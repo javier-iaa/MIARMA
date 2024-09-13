@@ -31,19 +31,22 @@ function aka = autoarmaord( seg, varargin)
 % 'rep' followed by an integer sets the limit in the repetition of orders, 
 % otherwise repetition is not used as a stop criterion.
 %
+% 'mem' followed by an integer allows to specify system memory to avoid
+% overflow caused by a huge number of free parameters.
+%
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 %
-% Version: 0.2.4 R2024
+% Version: 0.2.5 R2024
 %
 % Changes:
 % - Optimized for the new version of armaord and the use of ppmax, qpmax
 %
 % Calls:
-% validate_arma 0.2.2
+% validate_arma 0.2.3
 %
-% Date: 08/28/2024
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Date: 12/09/2024
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 verbflag = true;
 temp = true;
@@ -97,6 +100,14 @@ else
         if verbflag
             fprintf('\n%d points will be used for finding optimal order.\n', length(seg));
         end
+    end
+
+    imem = find(strcmp(varargin, 'mem'), 1);
+    if ~isempty(imem)
+        mem = varargin{imem+1};
+    else
+        % Default value is 16 Gb
+        mem = 16; 
     end
 end
 
@@ -169,8 +180,8 @@ while lseg<=ML
         end
 
         % Validate model with optimal order
-        [isval_mse, sta_mse, interp] = validate_arma( seg, ord, facint, 'mse' );
-        [isval_pc, sta_pc] = validate_arma( seg, ord, facint, 'pc', interp );
+        [isval_mse, sta_mse, interp] = validate_arma( seg, ord, facint, 'mse', mem );
+        [isval_pc, sta_pc] = validate_arma( seg, ord, facint, 'pc', mem, interp );
         if isval_mse
             str_mse = 'cannot reject';
         else
