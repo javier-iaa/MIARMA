@@ -14,7 +14,7 @@ function strout = MIARMA(strin)
 %
 %            and parameters in the struct params that contains the fields:
 %                temp, facmin, facmax, npi, npz, pmin, pmax, mseg, 
-%                nuc, always_int and qmax.
+%                nuc, always_int, verbose and qmax.
 %
 %           If instead of strin, a filename string is passed as input, a two or three
 %           columns data file with floating number notation is assumed.
@@ -60,17 +60,16 @@ function strout = MIARMA(strin)
 %                              fastCGSA.m
 %                              saveout.m
 %
-% Version: 0.1.2.6
+% Version: 0.1.2.7
 %
 % Changes:
-% - Ini file: when the input of MIARMA is a filename it search for an .ini
-% file with the same name. If it is found MIARMA read the list of
-% parameters from the file and initializes the params structure.
+% - BUGFIX: mseg was inneffective when auto_flag was disabled
+% - Minor fixes (verbose)
 %
-% - FIX: when input is a filename the result folder has the same name.
-%
-% Date: 12/09/2024
+% Date: 11/10/2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+numvers = '0.1.2.7';
 
 %% Warning messages
 
@@ -82,12 +81,6 @@ warning_m1 = [ '\nWarning: interpolation finished before all gaps could be fille
                 ', also others like facmax or mseg if nonstationarity is suspected.\n\n'];
             
 warning_m2 = '\nWarning: computing time could be up to several hours.\n\n';
-
-%% Some definitions
-numvers = '0.1.2.6';
-
-%lgaps0 = NaN;
-%Llin = NaN;
 
 %% Input data
 if ischar( strin )
@@ -158,7 +151,6 @@ frac_seg = maxseg(datin, flagin);
 
 % Use fractal fraction to warn about long computing time
 [~, ~, ~, fracfrac, ~] = fastCGSA( frac_seg );
-% fracfrac = fraction_cgsa( frac_seg );
 if fracfrac<80
     fprintf(2, warning_m2);
     rep_lim = 10; % used for deterministic signals
@@ -175,8 +167,8 @@ if ~isfield(instr, 'params')
 end
 
 % Flag that controls screen output. Presently there are only two modes:
-% 'full' and 'simple'. In the future a 'minimal' mode will be implemented 
-% in order to suppress all output in screen.
+% 'full' and 'none'. In the future a 'minimal' mode will be implemented 
+% in order to suppress most output in screen.
 if isfield( instr.params, 'verbose')
     verbose = instr.params.verbose;
 else
@@ -539,7 +531,14 @@ else
         fprintf('%d datapoints used for the grid of ARMA models\n',length(seg));
     end
     
-    if ~auto_flag      
+    if ~auto_flag
+	if ML>mseg
+            seg = seg(1:mseg);
+	end
+	if verbflag
+            fprintf('\n%d points will be used for finding optimal order.\n', length(seg));
+	end
+
         if exist( 'akaname', 'var' )
             if verbflag
                 aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
