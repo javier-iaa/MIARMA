@@ -64,9 +64,12 @@ function strout = MIARMA(strin)
 %
 % Changes:
 % - BUGFIX: mseg was inneffective when auto_flag was disabled
+% - Aka matrix is reduced when the akc file has a larger matrix than
+% necessary.
+% - 2 iterations in the FT correction.
 % - Minor fixes (verbose)
 %
-% Date: 11/10/2025
+% Date: 13/12/2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 numvers = '0.1.2.7';
@@ -547,7 +550,11 @@ else
                 aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
                 'qmax', qmax, 'verbose', false, 'w', akaname);
             end
-
+            % Reduce aka matrix when it is larger than demanded
+            ss = size(aka);
+            if ss(1)>pmax | ss(2)>qmax
+                aka = aka(1:(pmax-pmin+1), 1:(qmax+1));
+            end
         % Note that, armaord requires the flag 'w' is the last one used
         elseif temp
             if verbflag
@@ -923,7 +930,10 @@ end
 
 %% FT correction of the ARMA interpolation
 if ft_corr
+    %1st iteration
     datout_corr = ftcorr(datout, flagin, 'cutoff', cutoff_level);
+    %2nd iteration
+    datout_corr = ftcorr(datout_corr, flagin, 'cutoff', cutoff_level);
 else
     if isfield( instr.params, 'ft_corr' )
         if instr.params.ft_corr
