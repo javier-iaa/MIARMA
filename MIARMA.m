@@ -64,12 +64,14 @@ function strout = MIARMA(strin)
 %
 % Changes:
 % - BUGFIX: mseg was inneffective when auto_flag was disabled
+% - seg have ML length when mseg==0
 % - Aka matrix is reduced when the akc file has a larger matrix than
 % necessary.
 % - 2 iterations in the FT correction.
-% - Minor fixes (verbose)
+% - Processed flags (before gf) given as output strout.statin
+% - Minor fixes: verbose, seg and resfolder with aka as input, etc
 %
-% Date: 13/12/2025
+% Date: 27/12/2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 numvers = '0.1.2.7';
@@ -208,6 +210,9 @@ if ~ischar( strin )
         resFolder = sprintf('res%0.3d', numFolder+1);
     else
         resFolder = 'res001';
+    end
+    if verbflag
+        fprintf(2,'\n Using folder %s for results.\n\n', resFolder);
     end
 end
 
@@ -388,10 +393,12 @@ end
 params = [facmin facmax npi pmin facint mem];
 
 %% Prepare folder
-if ~isfolder(resFolder)
-    mkdir(resFolder);
+if ~isfield(instr, 'aka')
+    if ~isfolder(resFolder)
+        mkdir(resFolder);
+    end
+    cd(resFolder);
 end
-cd(resFolder);
 
 %% Building the gap indexes
 if isfield(instr, 'igap')
@@ -499,7 +506,7 @@ else
             strout.timeout = timein;
             strout.datout = datout;
             strout.statout = flagout;
-            strout.igap = igap;
+            % strout.igap = igap;
         end
         return;
     end
@@ -529,19 +536,17 @@ else
         seg = datout((igap(I*2-2)+1):(igap(I*2-1)-1));
     end
     
+    % seg have ML length if mseg==0
+    if mseg~=0
+        if ML>=mseg
+            seg = seg(1:mseg);
+        end
+    end
     if verbflag
         fprintf('Step 4 - Order estimation\n\nPlease wait...\n\n');
-        fprintf('%d datapoints used for the grid of ARMA models\n',length(seg));
+        fprintf('%d points will be used for the grid of ARMA models.\n', length(seg));
     end
-    
     if ~auto_flag
-	if ML>mseg
-            seg = seg(1:mseg);
-	end
-	if verbflag
-            fprintf('\n%d points will be used for finding optimal order.\n', length(seg));
-	end
-
         if exist( 'akaname', 'var' )
             if verbflag
                 aka = armaord( seg, 'pmin', pmin, 'pmax', pmax, ...
@@ -603,16 +608,6 @@ end
 q = cq - 1;
 p = cp + pmin - 1;
 fprintf('\nOptimal order: [%d %d]\n\n', p, q); 
-
-% Outputs: gap indexes and Akaike coefficient matrix
-
-strout.aka = aka;
-strout.igap = igap;
-strout.timeout = timein;
-strout.datout = datout;
-strout.statout = flagin;
-strout.ord = [p q];
-strout.segord = seg;
 
 pred_lim = 4000;
 faclim = floor( pred_lim/(p+q) );
@@ -959,8 +954,17 @@ else
 end
 
 strout.timeout = timein;
+strout.aka = aka;
+strout.igap = igap;
+% These are not the original flags but processed ones after lincorr, sing, ...
+strout.statin = flagin;
+% These are the output flags
 strout.statout = flagout;
-    
+strout.ord = [p q];
+if exist("seg","var")
+    strout.segord = seg;
+end
+
 if ascii_struct
     saveout(strout);
     fprintf('\n  Interpolation finished successfully.  \n');
