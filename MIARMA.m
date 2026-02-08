@@ -670,6 +670,8 @@ else
         % Termination condition: the number of gaps is not repeated 
         % more than twice in consecutive iterations
         if l1==l0
+            merge_flag = 1;
+            if next_trick
             break;
         else
             l0 = l1;
@@ -847,7 +849,7 @@ if numgap>0
     fprintf( ' Reducing ARMA order *\n\n' );
 
     if numgap==1
-        [datout, flagout, ~] = af_simp( datout, flagout, aka, igap, ...
+        [datout, flagout, ftc] = af_simp( datout, flagout, aka, igap, ...
                     params,1, 'lastr_aka', true, '1s' );
         igap = indgap( flagout );
         l1 = length( igap );
@@ -863,7 +865,7 @@ if numgap>0
     else
         while numgap>=1
 
-            [datout, flagout, ~] = af_simp( datout, flagout, aka, igap, ...
+            [datout, flagout, ftc] = af_simp( datout, flagout, aka, igap, ...
                 params, j, 'lastr_aka', true, '1s' );
 
             % Activate the FT correction with ftc flag from af_simp
@@ -884,10 +886,15 @@ if numgap>0
             numgap = l1/2;
             fprintf('\nNumber of gaps remaining: %d\n\n', numgap);
 
+            j = j + 1;
+
             % Termination condition: the number of gaps is not repeated 
             % more than twice in consecutive iterations
-            if l1~=l0
-                break;
+            if l1==l0
+                merge_flag = 1;
+                break
+            else
+                l0 = l1;
             end
             
             % If the number of gaps is still greater than 1 it will merge some
