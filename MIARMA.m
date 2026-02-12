@@ -64,6 +64,8 @@ function strout = MIARMA(strin)
 %
 % Changes:
 % - BUGFIX: mseg was inneffective when auto_flag was disabled
+% - BUGFIX: some filling iterations were missing due to incorrect condition
+% definition in the last loop structure.
 % - seg have ML length when mseg==0
 % - Aka matrix is reduced when the akc file has a larger matrix than
 % necessary.
@@ -71,7 +73,7 @@ function strout = MIARMA(strin)
 % - Processed flags (before gf) given as output strout.statin
 % - Minor fixes: verbose, seg and resfolder with aka as input, etc
 %
-% Date: 27/12/2025
+% Date: 08/02/2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 numvers = '0.1.2.7';
@@ -628,6 +630,8 @@ datout_tmp = datout;
 % Number of gaps
 numgap = l0/2;
 
+merge_flag = 0;
+
 if numgap==1
     fprintf('**Starting the gap-filling iterative process**\n\n');
     fprintf('Number of gaps: %d\n', numgap);
@@ -670,31 +674,36 @@ else
         % Termination condition: the number of gaps is not repeated 
         % more than twice in consecutive iterations
         if l1==l0
-            merge_flag = 1;
-            if next_trick
-            break;
+            if merge_flag==0
+                merge_flag = 1;
+            else
+                break;
+            end
         else
+            merge_flag = 0;
             l0 = l1;
         end
                 
         % If the number of gaps is still greater than 1 it will merge some
         % of them and repeat the main loop
-        j = 1;
-        if numgap>1
-%             flagout( flagout~=1 ) = 0;
-            fprintf( '\n**Reinicialization with gap merging**\n' );
-            numgap0 = numgap;
-            [flagout, go] = gapmerge( flagout, igap, facint );
-            if go==true
-%                 flagin( flagout==-1 ) = -1;
-                igap = indgap( flagout );
-                l0 = length( igap );
-                numgap = l0/2;
-                fprintf('\nMerged gaps: %d\n', numgap0-numgap );
-                fprintf('\nNumber of gaps: %d\n\n', numgap);
-            else
-                fprintf(2,'\nMerging is not effective to fill more gaps with these parameters.\n');
-                break;
+        if merge_flag
+            j = 1;
+            if numgap>1
+    %             flagout( flagout~=1 ) = 0;
+                fprintf( '\n**Reinicialization with gap merging**\n' );
+                numgap0 = numgap;
+                [flagout, go] = gapmerge( flagout, igap, facint );
+                if go==true
+    %                 flagin( flagout==-1 ) = -1;
+                    igap = indgap( flagout );
+                    l0 = length( igap );
+                    numgap = l0/2;
+                    fprintf('\nMerged gaps: %d\n', numgap0-numgap );
+                    fprintf('\nNumber of gaps: %d\n\n', numgap);
+                else
+                    fprintf(2,'\nMerging is not effective to fill more gaps with these parameters.\n');
+                    break;
+                end
             end
         end
     end
@@ -851,6 +860,12 @@ if numgap>0
     if numgap==1
         [datout, flagout, ftc] = af_simp( datout, flagout, aka, igap, ...
                     params,1, 'lastr_aka', true, '1s' );
+
+        % Activate the FT correction with ftc flag from af_simp
+        if ftc     
+            ft_corr = ftc;      
+        end
+
         igap = indgap( flagout );
         l1 = length( igap );
         numgap = l1/2;
@@ -891,40 +906,46 @@ if numgap>0
             % Termination condition: the number of gaps is not repeated 
             % more than twice in consecutive iterations
             if l1==l0
-                merge_flag = 1;
-                break
+                if merge_flag==0
+                    merge_flag = 1;
+                else
+                    break;
+                end
             else
+                merge_flag = 0;
                 l0 = l1;
             end
             
             % If the number of gaps is still greater than 1 it will merge some
             % of them and repeat the main loop
-            if numgap>1
+            if merge_flag
                 j = 1;
-    %             flagout( flagout~=1 ) = 0;
-                fprintf( '\n *Reinicialization with gap merging*\n' );
-                numgap0 = numgap;
-                [flagout, go] = gapmerge( flagout, igap, facint );
-                if go==true
-    %                 flagin( flagout==-1 ) = -1;
-                    igap = indgap( flagout );
-                    l0 = length( igap );
-                    numgap = l0/2;
-                    fprintf('\n Merged gaps: %d\n', numgap0-numgap );
-                    fprintf('\nNumber of gaps remaining: %d\n\n', numgap);
+                if numgap>1
+        %             flagout( flagout~=1 ) = 0;
+                    fprintf( '\n *Reinicialization with gap merging*\n' );
+                    numgap0 = numgap;
+                    [flagout, go] = gapmerge( flagout, igap, facint );
+                    if go==true
+        %                 flagin( flagout==-1 ) = -1;
+                        igap = indgap( flagout );
+                        l0 = length( igap );
+                        numgap = l0/2;
+                        fprintf('\n Merged gaps: %d\n', numgap0-numgap );
+                        fprintf('\nNumber of gaps remaining: %d\n\n', numgap);
+                    else
+                        fprintf(2,'\nMerging is not effective to fill more gaps with these parameters.\n');
+                        fprintf(2, warning_m1);
+                        ft_corr = false;
+                        break;
+                    end
                 else
-                    fprintf(2,'\nMerging is not effective to fill more gaps with these parameters.\n');
-                    fprintf(2, warning_m1);
-                    ft_corr = false;
+                    if numgap==1
+                        fprintf(2,'\nMerging is not effective to fill more gaps with these parameters.\n');
+                        fprintf(2, warning_m1);
+                        ft_corr = false;
+                    end
                     break;
                 end
-            else
-                if numgap==1
-                    fprintf(2,'\nMerging is not effective to fill more gaps with these parameters.\n');
-                    fprintf(2, warning_m1);
-                    ft_corr = false;
-                end
-                break;
             end
         end
     end
