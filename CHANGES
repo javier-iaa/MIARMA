@@ -1,3 +1,6 @@
+16-jun-26   * armaint 1.4.5 R2024
+            - Small adjust in lim_segsize to avoid mem overflow
+
 13-sep-24   * MIARMA 0.1.2.6 R2024
 	    - Ini file: when the input of MIARMA is a filename it search for an .ini file with the same name. If it is found MIARMA read the list of parameters from the file and initializes the params structure.
 	    - FIX: when input is a filename the result folder has the same name.
