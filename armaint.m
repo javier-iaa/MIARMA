@@ -12,15 +12,14 @@ function [interp, go] = armaint(seg1, seg2, ord, N2, mem)
 % Outputs:      interp - interpolated segment
 %               go - true when the interpolation works and false otherwise
 %
-% Version: 1.4.4 - R2024
+% Version: 1.4.5 - R2024
 %
 % Changes from the last version:
-% - Added limit in segment length to avoid memory overflow when the number
-% of free parameters of the model is very high.
+% - Small adjust in lim_segsize to avoid mem overflow
 %
 %  Calls: sigma_clip.m
 %  Author(s): Javier Pascual-Granado
-%  Date: 13/09/2024
+%  Date: 16/06/2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Default value for mem in Gb
@@ -110,6 +109,7 @@ po = ord(1);
 
 % This is approx. the segment limit to avoid a memory overflow
 lim_segsize = floor( mem/(8*(po^3 + 4*po^2 + po)/1024^3) - 10 );
+lim_segsize = lim_segsize - 10; % small adjust to avoid overflow
 
 if length(seg1) > lim_segsize
     seg1 = tail(seg1, lim_segsize);
