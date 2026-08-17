@@ -60,10 +60,18 @@ function strout = MIARMA(strin)
 %                              fastCGSA.m
 %                              saveout.m
 %
-% Version: 0.1.2.8
+% Version: 0.1.2.7
 %
 % Changes:
-% - BUGFIX: last gap merging was not processed due to incorrect flag
+% - BUGFIX: mseg was inneffective when auto_flag was disabled
+% - BUGFIX: some filling iterations were missing due to incorrect condition
+% definition in the last loop structure.
+% - seg have ML length when mseg==0
+% - Aka matrix is reduced when the akc file has a larger matrix than
+% necessary.
+% - 2 iterations in the FT correction.
+% - Processed flags (before gf) given as output strout.statin
+% - BUGFIX: last gap merging was not processed due to incorrect
 % - Minor fixes: j index
 %
 % Date: 16/08/2026

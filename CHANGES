@@ -1,27 +1,40 @@
-16-jun-26   * armaint 1.4.5 R2024
+16-jun-26   * MIARMA 0.1.2.7+ R2024
+
+			* armaint 1.4.5
             - Small adjust in lim_segsize to avoid mem overflow
 
+08-feb-26   * MIARMA 0.1.2.7 R2024
+			- BUGFIX: mseg was inneffective when auto_flag was disabled
+			- BUGFIX: some filling iterations were missing due to incorrect condition
+			definition in the last loop structure.
+			- FEATURE: seg have ML length when mseg==0
+			- PERF: Aka matrix is reduced when the akc file has a larger matrix than
+			necessary.
+			- 2 iterations in the FT correction.
+			- FEATURE: Processed flags (before gf) given as output strout.statin
+			- Minor fixes: verbose, seg and resfolder with aka as input, etc
+
 13-sep-24   * MIARMA 0.1.2.6 R2024
-	    - Ini file: when the input of MIARMA is a filename it search for an .ini file with the same name. If it is found MIARMA read the list of parameters from the file and initializes the params structure.
-	    - FIX: when input is a filename the result folder has the same name.
+			- Ini file: when the input of MIARMA is a filename it search for an .ini file with the same name. If it is found MIARMA read the list of parameters from the file and initializes the params structure.
+			- FIX: when input is a filename the result folder has the same name.
 
-	    * af_simp 0.4.3 R2024
-	    - Parameter mem introduced to avoid memory overflow.
+			* af_simp 0.4.3 R2024
+			- Parameter mem introduced to avoid memory overflow.
 
-	    * armaint 1.4.4 R2024
-	    - Added limit in segment length to avoid memory overflow when the number of free parameters of the model is very high.
+			* armaint 1.4.4 R2024
+			- Added limit in segment length to avoid memory overflow when the number of free parameters of the model is very high.
 
-	    * autoarmaord 0.2.3 R2024
-	    - Optimized for the new version of armaord and the use of ppmax, qpmax 
+			* autoarmaord 0.2.3 R2024
+			- Optimized for the new version of armaord and the use of ppmax, qpmax
 
-	    * validate_arma 0.2.3 R2024
-	    - Added limit in segment length to avoid memory overflow when the number of free parameters of the model is very high.
+			* validate_arma 0.2.3 R2024
+			- Added limit in segment length to avoid memory overflow when the number of free parameters of the model is very high.
 
 05-sep-24   * MIARMA 0.1.2.5 R2024
-	    - FIX: minor issue with folders
+			- FIX: minor issue with folders
 
-	    * armaord 2.1
-	    - FIX: failed when no previous aka file was found in folder
+			* armaord 2.1
+			- FIX: failed when no previous aka file was found in folder
 
 28-ago-24   * MIARMA 0.1.2.4 R2024
             - FIX: repmax is effectively removed now
@@ -47,16 +60,16 @@
 
 16-mar-23   * MIARMA 0.1.2.2 R2022
             - Fixed a bug occurring when the input is a filename
-	    - Added subroutine saveout.m for writing the output to an ASCII file
+			- Added subroutine saveout.m for writing the output to an ASCII file
 
-	    * validate_arma 0.2.2
-	    - Added interp as input and output. The output of armaint is the instruction with the highest computational cost so it make sense to have the output available for other calls.
+			* validate_arma 0.2.2
+			- Added interp as input and output. The output of armaint is the instruction with the highest computational cost so it make sense to have the output available for other calls.
 
-	    * autoarmaord 0.2.2
-	    - Reuses interp from previous validate_arma call
+			* autoarmaord 0.2.2
+			- Reuses interp from previous validate_arma call
 
 06-jun-22   * MIARMA 0.1.2.1 R2022
-	      New branch for modern releases of MATLAB.
+			New branch for modern releases of MATLAB.
 
             * autoarmaord 0.2.1
             - Print the length of the segment used for finding the optimal order.
@@ -72,7 +85,7 @@
             - autoarmaord uses optionally mseg parameter to trim the segment to calculate the optimal order in armaord. If the trimmed segment does not pass the tests the full segment is used.
             - fraction_cgsa.m is no longer used, only fastCGSA.m is necessary
             
-	    * armaint 1.4.2
+			* armaint 1.4.2
             - Minor fix to solve a compatibility issue with modern MATLAB releases.
 
             * autoarmaord 0.2
@@ -81,16 +94,16 @@
             - Added parameter mseg to trim the segment.
             - The search is repeated if the tests are not fulfilled for the trimmed segment and the max length segment is used in that case.
 
-	    * miarma_tr 0.1.1
-	    - Minor: regsamp no longer necessary
+			* miarma_tr 0.1.1
+			- Minor: regsamp no longer necessary
 
-	    * fastCGSA.m 0.2
-	    - frac is the fraction of fractal component
+			* fastCGSA.m 0.2
+			- frac is the fraction of fractal component
             - errfrac is the estimation of the error in fraction of fractal component
             - minor fixes.
 
-	    * regsamp 0.8.3
-	    - Using median values instead of zeros.
+			* regsamp 0.8.3
+			- Using median values instead of zeros.
 
 16-apr-22   * MIARMA 0.1.2.0
             - A filename string can be used as input instead a data structure.
@@ -114,15 +127,15 @@
 24-mar-22   * MIARMA 0.1.1.1
             - Fixed minor bug when no parameter structure is provided as input.
 
-	    * autoarmaord 0.1
-	    - Introduced stop condition when the optimal order repeats several times
-	    - Minor fixes.
+			* autoarmaord 0.1
+			- Introduced stop condition when the optimal order repeats several times
+			- Minor fixes.
 
-	    * validate_arma 0.2.1
-	    - Fixed minor bug.
+			* validate_arma 0.2.1
+			- Fixed minor bug.
 
-	    * miarma_tr
-	    - This new script is a wrapper to run MIARMA on a file removing transits before gap-filling is applied.
+			* miarma_tr
+			- This new script is a wrapper to run MIARMA on a file removing transits before gap-filling is applied.
 
 09-mar-22   * MIARMA 0.1.1.0            
             - Warning messages and more info is printed
@@ -179,125 +192,124 @@
             - Now using previous interpolated data points
 
             * indgap 1.0.5
-	    - Minor changes.
+			- Minor changes.
 
             * gapmerge 0.1
-	    - Ln 84 commented
+			- Ln 84 commented
             - Minor corrections and code cleaning
 
             * armaord 1.2.0
-	    - Unified aka files for the same segment
-	    - Header included in aka files
-	    - Minor bugs fixed
+			- Unified aka files for the same segment
+			- Header included in aka files
+			- Minor bugs fixed
 
-	    * armaint 1.4.0
-	    - Implemented a new check for goodness of fitting of models
-	    - Focus changed to 'Stability' and SearcMethod to 'lm'
+			* armaint 1.4.0
+			- Implemented a new check for goodness of fitting of models
+			- Focus changed to 'Stability' and SearcMethod to 'lm'
 
-	    * af_simp 0.4.0
-	    - ftc flag activate the FT correction when go is false
-	    - lastr_aka flag activate last resource solution to use other "optimal" orders when there is an insufficient amount of data. This should be  enable only once af_simp has been run with the flag disabled.
-	    - 3 bugs fixed that caused some segments not corrected were used for the fitting of ARMA models during data segment selection.
-	    - Minor fixes in ln 397 & 402
-	    - Other minor fixes.
+			* af_simp 0.4.0
+			- ftc flag activate the FT correction when go is false
+			- lastr_aka flag activate last resource solution to use other "optimal" orders when there is an insufficient amount of data. This should be  enable only once af_simp has been run with the flag disabled.
+			- 3 bugs fixed that caused some segments not corrected were used for the fitting of ARMA models during data segment selection.
+			- Minor fixes in ln 397 & 402
+			- Other minor fixes.
 
-	    * sigma_clip 0.4.0
-	    - empty flag to leave empty the outliers instead of interpolating them.
-	    - added stat vector as output
-	    - minor fixes
+			* sigma_clip 0.4.0
+			- empty flag to leave empty the outliers instead of interpolating them.
+			- added stat vector as output
+			- minor fixes
 
-	    * regsamp 0.8.1
-	    - Minor changes.
+			* regsamp 0.8.1
+			- Minor changes.
 
-	    * ftcorr 0.2
-	    - Minor fixes.
+			* ftcorr 0.2
+			- Minor fixes.
 
-	    * validate_arma 0.1
-	    - First version of the validation subroutine introduced in MIARMA 0.1.0.0. In order to perform the diagnostics a single gap is introduced in the middle of the time series and armaint.m is used to interpolate. Then, several statistics are used to compare between original and interpolated data.
+			* validate_arma 0.1
+			- First version of the validation subroutine introduced in MIARMA 0.1.0.0. In order to perform the diagnostics a single gap is introduced in the middle of the time series and armaint.m is used to interpolate. Then, several statistics are used to compare between original and interpolated data.
 
 30-mar-21   * MIARMA 0.0.2.0
-	    - Using ft_corr optionally for a final correction of the ARMA interpolation
-	    - ft_corr substitutes lscorr
-	    
-	    * af_simp 0.3.1
-	    - Fixed bug in ln 360
-	    - Fixed error evaluating control statement in ln 305
-	    - An additional correction has been implemented to avoid the issues when go is false in ln 373
-	    
-	    * armaint 1.3.11
-	    - Minor improvements
-	    
-	    * sigma_clip 0.3
-	    - Using pchip interpolation instead of the mean
-	    - few improvements and bug fixes
+			- Using ft_corr optionally for a final correction of the ARMA interpolation
+			- ft_corr substitutes lscorr
+
+			* af_simp 0.3.1
+			- Fixed bug in ln 360
+			- Fixed error evaluating control statement in ln 305
+			- An additional correction has been implemented to avoid the issues when go is false in ln 373
+
+			* armaint 1.3.11
+			- Minor improvements
+
+			* sigma_clip 0.3
+			- Using pchip interpolation instead of the mean
+			- few improvements and bug fixes
 
 16-mar-21   * MIARMA 0.0.1.1
-	    - Fixed issue #36
-	    - Minor improvements.
-	    - Added subroutine lscorr.m for LS correction (not implemented yet in the main code) 
+			- Fixed issue #36
+			- Minor improvements.
+			- Added subroutine lscorr.m for LS correction (not implemented yet in the main code)
 
-	    * regsamp 0.8
-	    - Efficiency improved 1500x
-	    - Requires ismemberf.m from Bruno Luong.
-	    
-	    * armaord 1.1.3  
-	    - 1 minor bug fixed.
-	    - Added verbosity parameter 'verbose': 1 (default) means verbose mode, 0 is silent mode.
-	    
+			* regsamp 0.8
+			- Efficiency improved 1500x
+			- Requires ismemberf.m from Bruno Luong.
+
+			* armaord 1.1.3
+			- 1 minor bug fixed.
+			- Added verbosity parameter 'verbose': 1 (default) means verbose mode, 0 is silent mode.
 	    
 09-mar-21   * MIARMA 0.0.1.0
-	    - Fixed issue #35
-	    - Minor improvements.
-	    - 1 Minor bug fixed.
-	    - Use new version of af_simp 0.3
+			- Fixed issue #35
+			- Minor improvements.
+			- 1 Minor bug fixed.
+			- Use new version of af_simp 0.3
 	    
-	    * af_simp 0.3.0
-	    - New optional input in varargin{end} activates one-sided extrapolation for the cases in which no forward-backward extrapolation is possible.
-	    - Minor fixes.
-	    - Code is simplified and improved its legibility.
+			* af_simp 0.3.0
+			- New optional input in varargin{end} activates one-sided extrapolation for the cases in which no forward-backward extrapolation is possible.
+			- Minor fixes.
+			- Code is simplified and improved its legibility.
 
-	    * armaord 1.1.1
-	    - several minor bugs fixed.
-	    
-	    * polintre 0.1
-	    - Optimization and minor fixes.
-	    - Note the factor 0.1 in line 46 to limit noise dispersion.
+			* armaord 1.1.1
+			- several minor bugs fixed.
 
-	    * regsamp 0.7
-	    - method is changed from 'linear' to 'pchip'.
-	    - initial time is recovered
-	    - minor fixes.
-	    
-	    * lincorr 1.0.7
-	    - Code cleaned.
-	    - Calls polintre v0.1
-	    - Fixed issue with npint being too small.
+			* polintre 0.1
+			- Optimization and minor fixes.
+			- Note the factor 0.1 in line 46 to limit noise dispersion.
+
+			* regsamp 0.7
+			- method is changed from 'linear' to 'pchip'.
+			- initial time is recovered
+			- minor fixes.
+
+			* lincorr 1.0.7
+			- Code cleaned.
+			- Calls polintre v0.1
+			- Fixed issue with npint being too small.
 
 16-feb-21   * MIARMA 0.0.0.2
-	    - Header in red color.
-	    - Control the ratio between num of points fed to models and num of points interpolated through parameter facint.
-	    - New parameter qmax.
-	    - Minor improvements to the code.
-	    
-	    * af_simp 0.2.1
-	    - Data points taken out with sing are no longer recovered.
- 	    - New check through facint parameter (see MIARMA.m for more)
-	    - Removed parameter S
-	    
-	    * armaint 1.3.10
-	    - Minor improvements
-	    
-	    * armaord 1.1.0
-	    - New parameter qmax
-	    - Print number of models to be calculated.
-	    - Multiple minor corrections and code optimization.
-	    
-	    * saveaka (not implemented yet)
-	    - New function that will save akaike matrices in order to simplify armaord code. It will also allow saving aka files from Matlab environment.
+			- Header in red color.
+			- Control the ratio between num of points fed to models and num of points interpolated through parameter facint.
+			- New parameter qmax.
+			- Minor improvements to the code.
+
+			* af_simp 0.2.1
+			- Data points taken out with sing are no longer recovered.
+			- New check through facint parameter (see MIARMA.m for more)
+			- Removed parameter S
+
+			* armaint 1.3.10
+			- Minor improvements
+
+			* armaord 1.1.0
+			- New parameter qmax
+			- Print number of models to be calculated.
+			- Multiple minor corrections and code optimization.
+
+			* saveaka (not implemented yet)
+			- New function that will save akaike matrices in order to simplify armaord code. It will also allow saving aka files from Matlab environment.
 	    
 23-jul-20   * MIARMA 0.0.0.1
-	    - This is a transition version where the code is cleaned in order to facilitate the posterior translation to R language.
-	    - Removed input files
+			- This is a transition version where the code is cleaned in order to facilitate the posterior translation to R language.
+			- Removed input files
             - Removed all references to CoRoT
             - Removed cellfind calls
             - Removed version control

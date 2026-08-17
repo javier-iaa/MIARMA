@@ -21,12 +21,15 @@ function varargout = armaord(S, varargin)
 % By Javier Pascual-Granado
 % <a href="matlab:web http://www.iaa.es;">IAA-CSIC, Spain</a>
 %
-% Version: 2.1
+% Version: 2.2
 %
 % Changes:
-% - BUGFIX: failed when no previous aka file was found in folder
+% - Parfor loop is now calculating each model sequentially instead of row
+% by row. This allows more parallelization of the loop and increase the
+% performance.
+% - Other minor fixes.
 %
-% Date: 2/09/2024
+% Date: 14/08/2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Default values and initial setup
@@ -99,14 +102,14 @@ if ~isempty(iw)
         k=1;
         f = fgetl(fid);
         while ~isempty(f)
-            header{k} = f;
+            header{k} = f; %#ok<AGROW>
             k = k+1;
             f = fgetl(fid);
         end
         nh = length(header);
         
         % Read the data (skip the header)
-        existingData = dlmread(nomfich, '', nh+1, 0);
+        existingData = readmatrix(nomfich, 'NumHeaderLines',nh+1,'FileType','text');
         
         % Load existing data into akamat
         loaded_rows = size(existingData, 1);
@@ -154,20 +157,43 @@ end
 %% Main parallel loop to calculate missing Akaike coefficients
 
 tic;
-parfor i = 0:qmax
-    local_akam = akamat(:, i+1);  % Load existing data if any
-    for j = pmin:pmax
-        ii = j - pmin + 1;
-        if isnan(local_akam(ii))  % Calculate only if not already done
-            try
-                model = armax(S, [j i], 'SearchMethod', 'lsqnonlin');
-                local_akam(ii) = aicplus(model, IC);
-            catch
-                local_akam(ii) = NaN;
-            end
-        end
+% Identify all (i,j) combinations that still need to be calculated
+[I, J] = ndgrid(0:qmax, pmin:pmax);
+
+% Convert (i,j) to the corresponding position in akamat
+row = J - pmin + 1;
+col = I + 1;
+
+mask = isnan(akamat(sub2ind(size(akamat), row, col)));
+
+% List of pending combinations
+pending_i = I(mask);
+pending_j = J(mask);
+
+nPending = numel(pending_i);
+
+% Calculate only the missing models
+values = NaN(nPending, 1);
+
+parfor k = 1:nPending
+    i = pending_i(k);
+    j = pending_j(k);
+
+    try
+        model = armax(S, [j i], 'SearchMethod', 'lsqnonlin');
+        values(k) = aicplus(model, IC);
+    catch
+        values(k) = NaN;
     end
-    akamat(:, i+1) = local_akam;  % Update the corresponding column in the main matrix
+end
+
+% Update akamat
+for k = 1:nPending
+    i = pending_i(k);
+    j = pending_j(k);
+
+    ii = j - pmin + 1;
+    akamat(ii, i+1) = values(k);
 end
 total_time = toc;
 
@@ -179,7 +205,7 @@ end
 % File writing (if required)
 if ~isempty(iw)
     % Write the entire matrix to the file
-    dlmwrite(nomfich, akamat, 'delimiter', ' ', '-append');
+    dlmwrite(nomfich, akamat, 'delimiter', ' ', '-append'); %#ok<DLMWT>
 end
 
 % Prepare outputs

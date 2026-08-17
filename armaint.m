@@ -1,4 +1,4 @@
-function [interp, go] = armaint(seg1, seg2, ord, N2, mem)
+ function [interp, go] = armaint(seg1, seg2, ord, N2, mem)
 % function [interp,go] = armaint(seg1, seg2, ord, N2, mem) interpolates N2
 % data points between the segments seg1 and seg2 using ARMA models.
 % To generate the output segment interp a triangular weight is used for
@@ -12,15 +12,24 @@ function [interp, go] = armaint(seg1, seg2, ord, N2, mem)
 % Outputs:      interp - interpolated segment
 %               go - true when the interpolation works and false otherwise
 %
-% Version: 1.4.5 - R2024
+% Version: 1.4.6 - R2024
 %
 % Changes from the last version:
-% - Small adjust in lim_segsize to avoid mem overflow
+% - Algorithm properties can be customised in the placeholder algoprop.m
+% and loaded with flag myalg_flag. Otherwise, default options are used.
 %
-%  Calls: sigma_clip.m
+%  Calls: sigma_clip.m, algoprop.m
 %  Author(s): Javier Pascual-Granado
-%  Date: 16/06/2026
+%  Date: 02/07/2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% This flag load the customised algorithm options included in algoprop,
+% otherwise, default options are used.
+myalg_flag = true;
+
+if myalg_flag
+    myalg = algoprop();
+end
 
 % Default value for mem in Gb
 if ~exist('mem','var')
@@ -36,48 +45,6 @@ fac_sig = 5;
 
 % Limit in goodness of fitting of models to continue with extrap
 lim_gf = 80;
-
-%% Algorithm properties
-% Zstability: Specifies the maximum distance of all poles 
-% from the origin to test stability of discrete-time models. 
-% A model is considered stable if all poles are within the 
-% distance Zstability from the origin. Default is 1+sqrt(eps)
-stab = 1+sqrt(eps);
-myalg.Focus = 'Stability'; % Prediction, Simulation or Stability
-myalg.MaxIter = 20;
-% myalg.Tolerance = 0.0100; % default value
-myalg.Tolerance = 0.05;
-myalg.LimitError = 0; % Specifies when to adjust the weight of large errors 
-% from quadratic to linear. Default value is 0. Errors larger than LimitError 
-% times the estimated standard deviation have a linear weight in the criteria.
-myalg.MaxSize = 'Auto'; % data is split into segments where each contains fewer than MaxSize elements.
-% myalg.SearchMethod = 'Auto';
-myalg.SearchMethod = 'lm'; % options are gn, gna, lm, Auto, lsqnonlin
-myalg.Criterion = 'Det';    % Det or Trace
-myalg.Weighting = 1;
-myalg.FixedParameter = [];
-myalg.Display = 'Off';
-myalg.N4Weight = 'Auto';
-myalg.N4Horizon = 'Auto';
-% myalg.InitialState = 'Auto';
-myalg.Advanced.Search.GnPinvConst = 10000;
-myalg.Advanced.Search.InitGnaTol = 1.0e-04;
-myalg.Advanced.Search.LmStep = 2;
-myalg.Advanced.Search.StepReduction = 2;
-myalg.Advanced.Search.MaxBisections = 25;
-myalg.Advanced.Search.LmStartValue= 1.0e-03;
-myalg.Advanced.Search.RelImprovement = 0;
-myalg.Advanced.Threshold.Zstability = stab; % Specifies the maximum distance 
-% of all poles from the origin to test stability of discrete-time models.
-% default is 1+sqrt(eps)
-myalg.Advanced.Threshold.Sstability = 0; % Specifies the location of the 
-% rightmost pole to test the stability of continuous-time models. Default
-% is zero.
-myalg.Advanced.Threshold.AutoInitialState = 1.05; %  Specifies when to automatically
-% estimate the initial state. When InitialState = 'Auto', the initial state is 
-% estimated when the ratio of the prediction-error norm with a zero initial state 
-% to the norm with an estimated initial state exceeds AutoInitialState. 
-% Default is 1.05.
 
 %% Forecast options
 opt = forecastOptions('InitialCondition', 'e');
@@ -132,7 +99,7 @@ if ~isempty(find(isnan(seg2),1))
 
     % Calculate ARMA model and obtain the coeff. for the left segment
     try
-        model1 = armax(seg1n,ord,'alg',myalg);
+        model1 = armax_par(seg1n,ord);
     catch E
         go = false;
         msg = getReport(E);
@@ -162,7 +129,7 @@ if ~isempty(find(isnan(seg2),1))
 
         % Calculate ARMA model and obtain the coeff. for the left segment
         try
-            model1 = armax(seg1n,ord,'alg',myalg);
+            model1 = armax_par(seg1n,ord);
         catch E
             msg = getReport(E);
             go = false;
@@ -201,7 +168,7 @@ if ~isempty(find(isnan(seg1),1))
 
     % Calculate ARMA model and obtain the coeff. for the right segment
     try
-        model2 = armax(flipud(seg2n), ord,'alg',myalg);
+        model2 = armax_par(seg2n,ord);
     catch E
         msg = getReport(E);
         go = false;
@@ -231,7 +198,7 @@ if ~isempty(find(isnan(seg1),1))
 
         % Calculate ARMA model and obtain the coeff. for the right segment
         try
-            model2 = armax(flipud(seg2n), ord,'alg',myalg);
+            model2 = armax_par(seg2n,ord);
         catch E
             msg = getReport(E);
             go = false;
@@ -280,7 +247,7 @@ seg2n = (seg2-mean(seg2))./sig_s2;
 % Forward extrapolation
 % Calculate ARMA model and obtain the coeff. for the left segment
 try
-    model1 = armax(seg1n, ord, 'alg', myalg);
+    model1 = armax_par(seg1n,ord);
 catch E
     msg = getReport(E);
     go = false;
@@ -295,7 +262,7 @@ yfor = yfor.y;
 
 % Calculate ARMA model and obtain the coeff. for the right segment
 try
-    model2 = armax(flipud(seg2n), ord,'alg',myalg);
+    model2 = armax_par(seg2n,ord);
 catch E
     msg = getReport(E);
     go = false;
@@ -360,7 +327,7 @@ if  cfsig || connanf
     
     % Calculate ARMA model and obtain the coeff. for the left segment
     try
-        model1 = armax(seg1n, ord, 'alg', myalg_alt);
+        model1 = armax_par(seg1n,ord);
     catch E
         msg = getReport(E);
         go = false;
@@ -423,7 +390,7 @@ if  cbsig || cbnan
     
     % Calculate ARMA model and obtain the coeff. for the right segment
     try
-        model2 = armax( flipud(seg2n), ord, 'alg', myalg_alt );
+        model2 = armax_par(seg2n,ord);
     catch E
         msg = getReport(E);
         go = false;
