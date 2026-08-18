@@ -17,10 +17,12 @@
 % Changes from the last version:
 % - Algorithm properties can be customised in the placeholder algoprop.m
 % and loaded with flag myalg_flag. Otherwise, default options are used.
+% - Using armax_par instead of armax for parallelisation of the modelling
+% algorithm.
 %
 %  Calls: sigma_clip.m, algoprop.m
 %  Author(s): Javier Pascual-Granado
-%  Date: 02/07/2026
+%  Date: 17/08/2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % This flag load the customised algorithm options included in algoprop,

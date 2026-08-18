@@ -1,3 +1,21 @@
+17-ago-26   * MIARMA 0.1.2.8 R2024
+            - BUGFIX: last gap merging was not processed due to incorrect flag
+            - Minor fixes: j index
+
+            * armaint 1.4.6
+            - FEATURE: Algorithm properties can be customised in the placeholder algoprop.m and loaded with flag myalg_flag. Otherwise, default options are used.
+            - Using armax_par instead of armax for parallelisation of the modelling algorithm.
+            
+            * algoprop.m
+            - New script that produce the algorithm parameter structure as a placeholder that can be customised and used with armaint
+
+            * armax_par 0.1
+            - model the data segment z by using a loss function which is minimised through fmincon. The algorithm used for minimisation, SQP, can be parallelised so this might be more effective than armax function when many cores are available. Otherwise, it is more efficient to use armax.
+
+            * arma_ord 2.2
+            - Parfor loop is now calculating each model sequentially instead of row by row. This allows more parallelization of the loop and increase the performance.
+            - Other minor fixes.
+
 16-jun-26   * MIARMA 0.1.2.7+ R2024
 
 			* armaint 1.4.5
