@@ -1,4 +1,4 @@
-function model1 = armax_par(z, o)
+function [model1, optLoss] = armax_par(z, o)
 % function model1 = armax_par(z, o) model the data segment z by using an
 % arma loss function which is minimised through fmincon.
 % 
@@ -10,11 +10,14 @@ function model1 = armax_par(z, o)
 %               o - ARMA (p,q) orders
 %
 % Outputs:      model1 - ARMA model
+%               optLoss - optimized loss
 %
-% Version: 0.1
+% Version: 0.2
 %
-%  Author(s): Javier Pascual-Granado
-%  Date: 17/08/2026
+% Changes: - Added optLoss (optimized loss) as output.
+%
+% Author(s): Javier Pascual-Granado
+% Date: 21/08/2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Inputs: supply your iddata object z, and model orders o
@@ -60,8 +63,7 @@ end
 opts = optimoptions('fmincon', ...
      'Display','none', ...
      'Algorithm','sqp', ...
-     'UseParallel', true, ...
-     'MaxIterations', 200);
+     'UseParallel', true);
 
 % Optional: suppress warnings temporarily
 warnState = warning('off','all');
@@ -69,7 +71,7 @@ warnState = warning('off','all');
 lb = -10*ones(1, na+nc);
 ub =  10*ones(1, na+nc);
 
-if isempty(gcp('nocreate'))
+if isempty(gcp('nocreate'))  
     % start pool for parallel computing without printing
     evalc('parpool'); 
 end
@@ -81,6 +83,7 @@ obj = @(p) arma_loss(p, z, na, nc);
 Aopt = [1, popt(1:na)];
 Copt = [1, popt(na+1:na+nc)];
 model1 = idpoly(Aopt, [], Copt);
+optLoss = Jmin^2;
 
 % Print the loss function
 % fprintf('Optimized loss = %.6g\n', Jmin);
