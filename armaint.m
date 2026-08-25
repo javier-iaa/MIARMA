@@ -1,40 +1,60 @@
- function [interp, go] = armaint(seg1, seg2, ord, N2, mem)
-% function [interp,go] = armaint(seg1, seg2, ord, N2, mem) interpolates N2
-% data points between the segments seg1 and seg2 using ARMA models.
+function [interp, go, info] = armaint(seg1, seg2, ord, N2, varargin)
+% function [interp,go, info] = armaint(seg1, seg2, ord, N2, varargin) 
+% interpolates N2 data points between the segments seg1 and seg2 using ARMA
+%  models.
 % To generate the output segment interp a triangular weight is used for
 % both segments.
 % Inputs:       seg1 - left data segment
 %               seg2 - right data segment
 %               ord - ARMA (p,q) orders
 %               N2 - length of the gap
-%               mem - is an optional input used to limit memory use
+%               
+% Optional inputs:
+%               mem - can be used to limit memory use. Pass the flag 'mem'
+%                followed by the number in Gb.
+%               debug - is used for debug/test purposes. Pass the flag
+%                'debug' to activate it.
 %
 % Outputs:      interp - interpolated segment
 %               go - true when the interpolation works and false otherwise
+%               info - optional output structure containing information of
+%               the performance of armax algorithms.
 %
-% Version: 1.4.6 - R2024
+% Version: 1.4.7 - R2024
 %
 % Changes from the last version:
-% - Algorithm properties can be customised in the placeholder algoprop.m
-% and loaded with flag myalg_flag. Otherwise, default options are used.
-% - Using armax_par instead of armax for parallelisation of the modelling
-% algorithm.
+% - Optional parameters are now passed through the varargin structure
+% - New optional parameter debug for debug/test purposes
+% - info structure as optional output containing information about
+% performance.
 %
 %  Calls: sigma_clip.m, algoprop.m
 %  Author(s): Javier Pascual-Granado
-%  Date: 17/08/2026
+%  Date: 25/08/2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % This flag load the customised algorithm options included in algoprop,
-% otherwise, default options are used.
+% otherwise, default options are used. I leave this activated by
+% construction but this should change at some point.
 myalg_flag = true;
 
 if myalg_flag
     myalg = algoprop();
 end
 
+% Set the debug flag for testing purposes
+debug_flag = find(strcmp(varargin,'debug'), 1 );
+if ~isempty(debug_flag)
+    debug = true;
+else
+    debug = false;
+end
+
 % Default value for mem in Gb
-if ~exist('mem','var')
+mem_flag = find(strcmp(varargin,'mem'), 1 );
+if ~isempty(mem_flag)
+    mem = varargin{mem_flag+1};
+else
     mem = 16;
 end
 
@@ -233,7 +253,7 @@ end
 
 %% Forward-Backward predictor: ARMA approach using an iterative algorithm
 
-% Alternative options
+% Alternative options (with focus on prediction)
 myalg_alt = myalg;
 myalg_alt.Focus = 'Prediction';
 
@@ -248,12 +268,74 @@ seg2n = (seg2-mean(seg2))./sig_s2;
 
 % Forward extrapolation
 % Calculate ARMA model and obtain the coeff. for the left segment
-try
-    model1 = armax_par(seg1n,ord);
-catch E
-    msg = getReport(E);
-    go = false;
-    return
+
+% This is used for debugging/test purposes. In the future it will be
+% removed and only one of the armax algorithms will be preserved. Then, it
+% should be added to the forward and backward extrapolation sections too.
+if debug
+    % Input info
+    info = struct();
+    info.numel = numel(seg1n);
+    info.std = sig_s1;
+    info.ordp = ord(1);
+    info.ordq = ord(2);
+    
+    % =========================================================
+    % 1. armax_par(seg1n,ord)
+    % =========================================================
+    tic;
+    try
+        [model1, info.armax_par_loss] = armax_par(seg1n,ord);
+        info.armax_par_time = toc;
+        info.armax_par_ok   = true;
+    catch E
+        info.armax_par_loss = nan;
+        info.armax_par_time = toc;
+        info.armax_par_ok   = false;
+        info.armax_par_error = getReport(E,'basic');
+        model1 = [];
+    end
+
+    % =========================================================
+    % 2. armax(seg1n,ord)
+    % =========================================================
+    tic;
+    try
+        model12 = armax(seg1n,ord);
+        info.armax_loss = model12.Report.Fit.LossFcn;
+        info.armax_time = toc;
+        info.armax_ok   = true;
+    catch E
+        info.armax_loss = nan;
+        info.armax_time = toc;
+        info.armax_ok   = false;
+        info.armax_error = getReport(E,'basic');
+    end
+
+    % =========================================================
+    % 3. armax(seg1n,ord,'alg',myalg)
+    % =========================================================
+    tic;
+    try
+        model13 = armax(seg1n,ord,'alg',myalg);
+        info.armax_alg_loss = model13.Report.Fit.LossFcn;
+        info.armax_alg_time = toc;
+        info.armax_alg_ok   = true;
+    catch E
+        info.armax_alg_loss = nan;
+        info.armax_alg_time = toc;
+        info.armax_alg_ok   = false;
+        info.armax_alg_error = getReport(E,'basic');
+    end
+
+else
+    % Normal execution
+    try
+        model1 = armax_par(seg1n,ord);
+    catch E
+        msg = getReport(E);
+        return
+    end
 end
 
 data1 = iddata( seg1n(1:end-1), []);
