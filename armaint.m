@@ -23,14 +23,11 @@ function [interp, go, info] = armaint(seg1, seg2, ord, N2, varargin)
 % Version: 1.4.7 - R2024
 %
 % Changes from the last version:
-% - Optional parameters are now passed through the varargin structure
-% - New optional parameter debug for debug/test purposes
-% - info structure as optional output containing information about
-% performance.
+% - Reverted armax_par to armax.
 %
 %  Calls: sigma_clip.m, algoprop.m
 %  Author(s): Javier Pascual-Granado
-%  Date: 25/08/2026
+%  Date: 30/08/2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % This flag load the customised algorithm options included in algoprop,
@@ -121,7 +118,8 @@ if ~isempty(find(isnan(seg2),1))
 
     % Calculate ARMA model and obtain the coeff. for the left segment
     try
-        model1 = armax_par(seg1n,ord);
+        % model1 = armax_par(seg1n,ord);
+        model1 = armax(seg1n,ord);
     catch E
         go = false;
         msg = getReport(E);
@@ -151,7 +149,8 @@ if ~isempty(find(isnan(seg2),1))
 
         % Calculate ARMA model and obtain the coeff. for the left segment
         try
-            model1 = armax_par(seg1n,ord);
+            % model1 = armax_par(seg1n,ord);
+            model1 = armax(seg1n,ord);
         catch E
             msg = getReport(E);
             go = false;
@@ -190,7 +189,8 @@ if ~isempty(find(isnan(seg1),1))
 
     % Calculate ARMA model and obtain the coeff. for the right segment
     try
-        model2 = armax_par(seg2n,ord);
+        % model2 = armax_par(seg2n,ord);
+        model2 = armax(seg2n,ord);
     catch E
         msg = getReport(E);
         go = false;
@@ -220,7 +220,8 @@ if ~isempty(find(isnan(seg1),1))
 
         % Calculate ARMA model and obtain the coeff. for the right segment
         try
-            model2 = armax_par(seg2n,ord);
+            % model2 = armax_par(seg2n,ord);
+            model2 = armax(seg2n,ord);
         catch E
             msg = getReport(E);
             go = false;
@@ -331,7 +332,8 @@ if debug
 else
     % Normal execution
     try
-        model1 = armax_par(seg1n,ord);
+        % model1 = armax_par(seg1n,ord);
+        model1 = armax(seg1n,ord);
     catch E
         msg = getReport(E);
         return
@@ -346,7 +348,8 @@ yfor = yfor.y;
 
 % Calculate ARMA model and obtain the coeff. for the right segment
 try
-    model2 = armax_par(seg2n,ord);
+    % model2 = armax_par(seg2n,ord);
+    model2 = armax(seg2n,ord);
 catch E
     msg = getReport(E);
     go = false;
@@ -411,7 +414,8 @@ if  cfsig || connanf
     
     % Calculate ARMA model and obtain the coeff. for the left segment
     try
-        model1 = armax_par(seg1n,ord);
+        % model1 = armax_par(seg1n,ord);
+        model1 = armax(seg1n,ord);
     catch E
         msg = getReport(E);
         go = false;
@@ -474,7 +478,8 @@ if  cbsig || cbnan
     
     % Calculate ARMA model and obtain the coeff. for the right segment
     try
-        model2 = armax_par(seg2n,ord);
+        % model2 = armax_par(seg2n,ord);
+        model2 = armax(seg2n,ord);
     catch E
         msg = getReport(E);
         go = false;
