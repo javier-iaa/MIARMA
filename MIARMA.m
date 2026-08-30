@@ -67,23 +67,18 @@ function outStruct = MIARMA(inStruct)
 %                              saveout.m
 %                              defpars.m
 %
-% Version: 0.1.2.9
+% Version: 0.1.2.10
 %
 % Changes:
-% - New function defpars to define default parameters. This make cleaner
-% code and simpler references.
-% - af_simp now uses outStruct as input.
-% - New flag 'debug' when true generates a number of benchmark_armax.csv 
-% files(one for every iteration inside of af_simp) distributed in folders 
-% (one for every section of the gap-filling steps). Note that gapmerge 
-% re-start the count of gaps so the 'Iteration' field in the csv files is 
-% re-started too.
-% - Multiple minor corrections and improvements.
+% - BUGFIX: gap merging was activated during the 2nd ARMA filling run 
+% before expected.
+% - BUGFIX: igap incorrectly passed to af_simp during 3rd ARMA filling run.
+% - Other minor fixes and format improvements.
 %
-% Date: 24/08/2026
+% Date: 30/08/2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-numvers = '0.1.2.9';
+numvers = '0.1.2.10';
 
 %% Warning messages
 
@@ -199,8 +194,8 @@ if verbflag
     % Header
     fprintf(2, '\n #################################################\n');
     fprintf(2, ' #                                               #\n');
-    fprintf(2, ' #                 MIARMA  %s                 #\n', numvers);
-    fprintf(2, ' #  by J.Pascual-Granado, IAA-CSIC, Spain. 2024  #\n');
+    fprintf(2, ' #                 MIARMA  %s               #\n', numvers);
+    fprintf(2, ' #  by J.Pascual-Granado, IAA-CSIC, Spain. 2026  #\n');
     fprintf(2, ' #              License GNU GPL v3.0             #\n');
     fprintf(2, ' #                                               #\n');
     fprintf(2, ' #################################################\n');
@@ -222,9 +217,6 @@ if ~ischar( inStruct )
         resFolder = sprintf('res%0.3d', numFolder+1);
     else
         resFolder = 'res001';
-    end
-    if verbflag
-        fprintf(2,'\n Using folder %s for results.\n\n', resFolder);
     end
 end
 
@@ -343,6 +335,12 @@ if isfield( inStruct, 'flags')
         outStruct.flags.debug_flag = inStruct.flags.debug;
     end
 end   
+
+if ~ischar( inStruct )
+    if verbflag
+        fprintf(2,'\n Using folder %s for results.\n\n', resFolder);
+    end
+end
 
 % Save version number
 outStruct.numvers = numvers;
@@ -593,7 +591,7 @@ if outStruct.params.facmax>faclim
     fprintf(2,'\nWarning: facmax greater than %d might produce issues\n\n', faclim);
 end
 
-%% ARMA filling iterations
+%% 1st ARMA filling run
 
 j = 1; % iteration-number
 
@@ -706,7 +704,7 @@ outStruct.igap = igap;
 %     Llin = Llin + length(find(flagout~=0));
 % end
 
-%% The optimal order condition is relaxed
+%% 2nd ARMA filling run (the optimal order condition is relaxed)
 
 if numgap > 0
     fprintf( '\n**Reducing ARMA(p,q) order for the remaining gaps**\n\n' );
@@ -765,6 +763,7 @@ if numgap > 0
                 end
             else
                 l0 = l1;
+                merge_flag = 0;
             end
     
             % if mod(j,2)==1 && j>1
@@ -805,7 +804,7 @@ if numgap > 0
     outStruct.igap = igap;
 end
 
-%% One-sided extrap is activated (if always_int is on)
+%% 3rd ARMA filling run (One-sided extrap is activated if always_int is on)
 % Fill gaps left previously due to any issue in armaint that set the flag 
 % <go> to False.
 
@@ -871,6 +870,7 @@ if (outStruct.flags.always_int && numgap > 0)
                 end
             else
                 l0 = l1;
+                merge_flag = 0;
             end
 
             % if mod(j,2)==1 && j>1
@@ -893,7 +893,7 @@ if (outStruct.flags.always_int && numgap > 0)
 
                     if go==true
                         igap = indgap( flagout );
-                        outStruct.statout = igap;
+                        outStruct.igap = igap;
                         l0 = length( igap );
                         numgap = l0/2;
                         fprintf('\n Merged gaps: %d\n', numgap0-numgap );
@@ -909,7 +909,7 @@ if (outStruct.flags.always_int && numgap > 0)
     outStruct.igap = igap;
 end
 
-%% One-sided extrap + relaxed optimal condition
+%% 4th ARMA filling run (One-sided extrap + relaxed optimal condition)
 
 if (outStruct.flags.always_int && numgap > 0)
     fprintf('\n One-sided extrap + relaxed optimal condition \n');
