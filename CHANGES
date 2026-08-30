@@ -1,3 +1,31 @@
+30-ago-26   * MIARMA 0.1.2.10 R2024
+            - BUGFIX: gap merging was activated during the 2nd ARMA filling run before expected
+            - BUGFIX: igap incorrectly passed to af_simp during 3rd ARMA filling run
+            - Other minor fixes and format improvements
+        
+            * armaint 1.4.8
+            - Reverted armax_par to armax
+
+25-ago-26   * MIARMA 0.1.2.9 R2024
+            - New function defpars.m to define default parameters. This make cleaner code and simpler references
+            - af_simp now uses outStruct as input
+            - New flag 'debug' when true generates a number of benchmark_armax.csv files(one for every iteration inside of af_simp) distributed in folders  (one for every section of the gap-filling steps). Note that gapmerge re-start the count of gaps so the 'Iteration' field in the csv files is re-started too
+            - Multiple minor corrections and improvements
+
+            * af_simp 0.4.4
+            - Optional flag 'debug' introduced to save info from armaint for debug/test purposes
+            - Now calling info2table.m to save debug information
+            - <iter> is now a 2-element [i j] array
+            - Minor corrections
+
+            * armaint 1.4.7
+            - Optional parameters are now passed through the varargin structure
+            - New optional parameter debug for debug/test purposes
+            - info structure as optional output containing information about performance
+
+            * armax_par 0.2
+            - Added optLoss (optimized loss) as output
+
 17-ago-26   * MIARMA 0.1.2.8 R2024
             - BUGFIX: last gap merging was not processed due to incorrect flag
             - Minor fixes: j index
