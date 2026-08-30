@@ -91,9 +91,16 @@ end
 
 % Use:
 %  In order to compare computing time from armax_alg and armax_par:
+% T = readtable('benchmark_armax_1.csv');
 %
 % ta = T.Comp_Time_s(T.Algorithm=="armax_alg");
 % tp = T.Comp_Time_s(T.Algorithm=="armax_par");
 % mask = ta < tp;                      % logical vector
 % T_armax_alg = T(T.Algorithm=="armax_alg", :);
 % result = T_armax_alg(mask, :);      % rows for armax_alg where ta < tp
+
+% Plot computing time vs number of elements
+% plot(T.Numel, T.Comp_Time_s,'.')
+
+% Integrate over computing time and summarize for each algorithm
+% groupsummary(T, "Algorithm", "sum", "Comp_Time_s")
