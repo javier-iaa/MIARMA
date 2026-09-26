@@ -1,3 +1,14 @@
+26-sep-26   * MIARMA 0.1.2.11 R2024
+	    - BUGFIX: Recover data segments that were taken out with sing after ARMA run 2
+
+	    * indgap 1.0.6
+	    - Gaps are now defined as runs of flag==1 only. Segments flagged -1 (data too short to fit an ARMA model, are not gaps and are no longer reported.
+
+	    * af_simp 0.5.0
+	    - The gap-filling loop has been parallelized with parfor: the sequential loop was replaced by a parfor over the gaps. Every gap is filled independently using the original (unfilled) data, so the interpolated values of the already processed gaps are no longer used to build the segments of the following ones; results may slightly differ from the sequential algorithm.
+	    - The debug information is collected inside the parallel loop and written to the tables (info2table) once the loop has ended.
+	    - Added a guard that skips any <igap> entry whose range is not a real gap (flagin(g1:g2)==1). This prevents an already filled segment from being overwritten and re-flagged as a gap when af_simp is called again with a stale <igap> after the filling has converged.
+
 30-ago-26   * MIARMA 0.1.2.10 R2024
             - BUGFIX: gap merging was activated during the 2nd ARMA filling run before expected
             - BUGFIX: igap incorrectly passed to af_simp during 3rd ARMA filling run
