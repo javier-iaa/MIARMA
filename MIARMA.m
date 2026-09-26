@@ -67,18 +67,16 @@ function outStruct = MIARMA(inStruct)
 %                              saveout.m
 %                              defpars.m
 %
-% Version: 0.1.2.10
+% Version: 0.1.2.11
 %
 % Changes:
-% - BUGFIX: gap merging was activated during the 2nd ARMA filling run 
-% before expected.
-% - BUGFIX: igap incorrectly passed to af_simp during 3rd ARMA filling run.
-% - Other minor fixes and format improvements.
+% - BUGFIX: Recover data segments that were taken out with sing after ARMA
+% run 2.
 %
-% Date: 30/08/2026
+% Date: 26/09/2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-numvers = '0.1.2.10';
+numvers = '0.1.2.11';
 
 %% Warning messages
 
@@ -693,17 +691,6 @@ else
     end
 end
 
-% Recover data segments that were taken out with sing
-% datout(flagin==-1) = datin(flagin==-1);
-flagout( flagin~=1 ) = 0;
-outStruct.statout = flagout;
-igap = indgap( flagout );
-outStruct.igap = igap;
-
-% if (exist('Llin','var'))
-%     Llin = Llin + length(find(flagout~=0));
-% end
-
 %% 2nd ARMA filling run (the optimal order condition is relaxed)
 
 if numgap > 0
@@ -803,6 +790,13 @@ if numgap > 0
     end
     outStruct.igap = igap;
 end
+
+% Recover data segments that were taken out with sing
+% datout(flagin==-1) = datin(flagin==-1);
+flagout( flagin~=1 ) = 0;
+outStruct.statout = flagout;
+igap = indgap( flagout );
+outStruct.igap = igap;
 
 %% 3rd ARMA filling run (One-sided extrap is activated if always_int is on)
 % Fill gaps left previously due to any issue in armaint that set the flag 
