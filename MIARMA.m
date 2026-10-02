@@ -67,16 +67,16 @@ function outStruct = MIARMA(inStruct)
 %                              saveout.m
 %                              defpars.m
 %
-% Version: 0.1.2.11
+% Version: 0.1.2.12
 %
 % Changes:
-% - BUGFIX: Recover data segments that were taken out with sing after ARMA
-% run 2.
+% - BUGFIX: outStruct not updated properly in run 4.
+% - FEATURE: facint can be a float.
 %
-% Date: 26/09/2026
+% Date: 29/09/2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-numvers = '0.1.2.11';
+numvers = '0.1.2.12';
 
 %% Warning messages
 
@@ -443,7 +443,7 @@ else
             fprintf(fich, '# gaps_linear: %d\n', Llin);
             fprintf(fich, '# facmin: %d\n', outStruct.params.facmin);
             fprintf(fich, '# facmax: %d\n', outStruct.params.facmax);
-            fprintf(fich, '# facint: %d\n', outStruct.params.facint);
+            fprintf(fich, '# facint: %3.1f\n', outStruct.params.facint);
             fprintf(fich, '# npi: %d\n', outStruct.params.npi);
             fprintf(fich, '# npz: %d\n', outStruct.params.npz);
             fprintf(fich, '# mseg: %d\n', outStruct.params.mseg);
@@ -941,6 +941,9 @@ if (outStruct.flags.always_int && numgap > 0)
                 'lastr_aka', true, '1s' ); % [j 4] input is used 
             % when debug mode is activated to save file deb00j.csv in 
             % folder 004
+
+            outStruct.datout = datout;
+            outStruct.statout = flagout;
 
             % Activate the FT correction with ftc flag from af_simp
             if ftc
