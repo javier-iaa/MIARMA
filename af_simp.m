@@ -29,15 +29,27 @@ function [datout, flagout, ftc] = af_simp(strin, iter, varargin)
 % Calls:   armaint.m
 %          info2table.m
 %
-% Version: 0.5.0
+% Version: 0.5.1
 %
 % Changes from the last version: 
+% - Memory optimization: the whole <strin> structure was being broadcast to
+% every parfor worker just to read <strin.flags.debug_flag>. The needed
+% fields are now unpacked into scalar variables (<dbg>) before the loop, so
+% the series is no longer duplicated inside the structure on every worker.
+% - Memory optimization: all the data/flag dependent pre-ARMA work (gap
+% guard, segment selection, NaN trimming, same-length and facmax reductions,
+% polynomial interpolation of small gaps, order reduction) is now performed
+% serially on the client by the <prepare_gaps> helper and only the (small)
+% final segments are sent to the parfor workers. The workers no longer
+% receive copies of the full <datout>/<flagin> vectors, which drastically
+% reduces the per-worker memory footprint for long series.
 % - The gap-filling loop has been parallelized with parfor: the sequential
 % <while ind1f>=0> loop was replaced by a <parfor k=1:ng> over the gaps.
 % Every gap is filled independently using the original (unfilled) data, so
 % the interpolated values of the already processed gaps are no longer used
 % to build the segments of the following ones; results may slightly differ
-% from the sequential algorithm.
+% from the sequential algorithm. The result for the first gap coincides
+% with the sequential one.
 % - The debug information is collected inside the parallel loop and written
 % to the tables (info2table) once the loop has ended.
 % - Added a guard that skips any <igap> entry whose range is not a real
@@ -50,11 +62,7 @@ function [datout, flagout, ftc] = af_simp(strin, iter, varargin)
 % Date: 26/09/2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Flag to activate the FT correction in case armaint fails
-%ftc = false;
-
-% Unpack the structure
-datin = strin.datout;
+%% Unpack the structure
 flagin = strin.statout;
 ind1 = strin.igap;
 facmin = strin.params.facmin;
@@ -64,12 +72,13 @@ pmin = strin.params.pmin;
 fc = strin.params.facint;
 mem = strin.params.mem;
 aka = strin.aka;
-
-L = length(datin);
-l0 = length(ind1);
+dbg = strin.flags.debug_flag;
 
 % convert data into column vector
-datout = reshape(datin,L,1);
+datout = strin.datout(:);
+
+L = length(datout);
+l0 = length(ind1);
 
 %% Optional inputs %%
 
@@ -90,13 +99,17 @@ end
 % Number of workers for the parfor loop. Passed as 'nw', a nonnegative
 % integer (0 = serial on the client, N = pool with N workers). If the
 % existing pool has fewer workers than requested, its size is used.
+% Max number of cores used when nw is default. If the real number of cores 
+% is lower than this, then the max number of cores available will be used.
+maxnumcores = 24;
+
 nwreq = find( strcmp(varargin,'nw'), 1 );
 if ~isempty(nwreq)
     nwval = varargin{nwreq+1};
 else
-    % Memory conscious default: never open more than 4 worker processes
+    % Memory conscious default: never open more than maxnumcores workers
     % (each one is a full MATLAB process with copies of the data).
-    nwval = min(feature('numcores'), 4);
+    nwval = min(feature('numcores'), maxnumcores);
 end
 
 % Data points used for the polynomial fitting.
@@ -134,16 +147,6 @@ gs = ind1(1:2:end);
 ge = ind1(2:2:end);
 ns = [ ind1(3:2:end) nan ];
 
- % Here begins the gap-filling process (parallel version)
- %
- % NOTE: in the parfor version every gap is filled independently using the
- % original (unfilled) data as input. Contrary to the sequential version,
- % the interpolated values of the already processed gaps are not used to
- % build the segments of the following ones. This makes the computation
- % parallelizable at the cost of (slightly) shorter segments, since the NaNs
- % of the remaining gaps are truncated as usual. The result for the first
- % gap coincides with the sequential one.
-
 % Containers collecting the results of every gap:
 % - Dfills{k}: interpolated values for gap k (empty if not interpolated)
 % - Fwrites{k}: flag update [r1 r2 value] applied to flagout after the loop
@@ -157,7 +160,7 @@ Ftc_gap = false(ng,1);
 % In debug mode the loop is executed serially on the client (nw=0) because
 % armaint may start its own pool (armax_par), which is not allowed inside
 % the parfor workers. Otherwise the default parallel pool is used.
-if strin.flags.debug_flag
+if dbg
     % In debug mode run serially on the client because armaint may start
     % its own pool (armax_par), not allowed inside parfor workers.
     nw = 0;
@@ -179,12 +182,180 @@ else
     end
 end
 
+% Serial preparation of every gap on the client (see the <prepare_gaps>
+% helper below). It comprises all the pre-ARMA decisions: the stale-gap
+% guard, the segment selection and trimming (NaN, same-length, facmax and
+% npint reductions), the short unusable segments (flagged as -1), the
+% one-sided extrapolation handling and the polynomial interpolation of the
+% small gaps. Only the final (small) segments and parameters are stored per
+% gap; the parfor workers below no longer need copies of the full data and
+% flag vectors.
+PG = prepare_gaps(datout, flagin, gs, ge, ns, ng, L, facmin, facmax, fc, ...
+    npi, pmin, npint, onesd, lastr_aka, ord1, aka1);
+
+%% Parallel interpolation of the gaps that need it
 parfor (k = 1:ng, nw)
 
-    % Number of gaps remaining (including the current one) and boundaries
-    rem = ng - k + 1;
+    switch PG(k).stype
+        case 0
+            % Gap skipped during the preparation (nothing to do)
+            continue
+
+        case 2
+            % Small gap: polynomial interpolation. It is deferred to this
+            % loop so that its stochastic rng consumption happens in the
+            % same interleaved order as the ARMA ones, keeping the serial
+            % results identical to the previous version.
+            interp = polintre(PG(k).seg1, PG(k).seg2, PG(k).np, 3);
+            Dfills{k} = interp;
+            Fwrites{k} = [PG(k).g1, PG(k).g2, 0];
+            continue
+    end
+
+    % The order selected for this gap and the (p,q) candidate to start the
+    % order-rescan loop, as determined during the preparation stage.
+    ord = PG(k).ord;
+    cp = PG(k).cp;
+    cq = PG(k).cq;
+
+    % (Re)initialized model, local to the gap (the rescan mutations below
+    % do not leak to the following gaps)
+    aka = aka1;
+
+    Dinfos{k} = cell(0,2);
+
+    if dbg
+        [interp, go, info] = armaint(PG(k).seg1, PG(k).seg2, ord, PG(k).np, ...
+            'mem', mem, 'debug');
+        Dinfos{k} = [ Dinfos{k}; {info, true} ];
+    else
+        [interp, go] = armaint(PG(k).seg1, PG(k).seg2, ord, PG(k).np, ...
+            'mem', mem);
+    end
+
+    % Finally the interpolated segment is inserted in datout
+    if go
+        Dfills{k} = interp;
+        Fwrites{k} = [PG(k).g1, PG(k).g2, 0];
+    else
+        % If armaint could not interpolate we try with next "optimal" order
+        % If, in any case, this results insufficient we could try in the
+        % future two solutions: a loop to find the order that makes it
+        % works, to restrict the orders in the MA part, since this appears
+        % to be more unstable when the q is high.
+        if lastr_aka
+            while ~go
+                aka(cp, cq) = nan;
+                minaka = min( min(aka) );
+                if isnan( minaka )
+                    Ftc_gap(k) = true;
+                    break
+                end
+                [cp, cq] = find(aka == minaka);
+                q = cq - 1;
+                p = cp + pmin - 1;
+                ord = [p q];
+                if dbg
+                    [interp, go, info] = armaint(PG(k).seg1, PG(k).seg2, ord, ...
+                        PG(k).np, 'mem', mem, 'debug');
+                    if go
+                        Dinfos{k} = [ Dinfos{k}; {info, false} ];
+                        Dfills{k} = interp;
+                        Fwrites{k} = [PG(k).g1, PG(k).g2, 0];
+                        break
+                    end
+                else
+                    [interp, go] = armaint(PG(k).seg1, PG(k).seg2, ord, ...
+                        PG(k).np, 'mem', mem);
+                    if go
+                        Dfills{k} = interp;
+                        Fwrites{k} = [PG(k).g1, PG(k).g2, 0];
+                        break
+                    end
+                end
+            end
+        else
+            Ftc_gap(k) = true;
+        end
+    end
+end
+
+ %% Update datout and flagout with the results of every gap. The flag
+ %  updatings are applied in the same order as in the sequential version so
+ %  that overwritings produce the same final state. The fills/writes coming
+ %  from the preparation stage (PG) and the ones produced by the parallel
+ %  loop (Dfills/Fwrites) are mixed per gap, preserving the original order.
+for k = 1:ng
+    if ~isempty(Dfills{k})
+        datout( gs(k):ge(k) ) = Dfills{k};
+    end
+    if ~isempty(PG(k).writes)
+        flagout( PG(k).writes(1):PG(k).writes(2) ) = PG(k).writes(3);
+    end
+    if ~isempty(Fwrites{k})
+        flagout( Fwrites{k}(1):Fwrites{k}(2) ) = Fwrites{k}(3);
+    end
+end
+
+% Write the debug information sequentially to avoid concurrent writes from
+% the parallel workers (info2table appends rows to csv files)
+if dbg
+    gnit = 1;
+    for k = 1:ng
+        for j = 1:size(Dinfos{k},1)
+            if Dinfos{k}{j,2}
+                info2table(Dinfos{k}{j,1}, gnit, iter);
+            else
+                info2table(Dinfos{k}{j,1}, gnit);
+            end
+            gnit = gnit + 1;
+        end
+    end
+end
+
+% FT correction required in at least one of the gaps
+ftc = any( Ftc_gap );
+ 
+% fprintf(repmat('\b',1,5));
+fprintf('\n');
+
+end
+
+%% Local helper: serial pre-ARMA preparation of every gap %%
+%
+% Mirrors, gap by gap, all the decisions that in the old parallel version
+% were taken inside the parfor loop but that only depend on <datout>,
+% <flagin>, <gs>/<ge>/<ns> and the model orders, so that only their final
+% outcome reaches the workers:
+% - PG(k).stype    0 skipped, 1 ARMA interpolation, 2 small gap (polintre)
+% - PG(k).g1/g2     gap boundaries
+% - PG(k).np        number of points to interpolate
+% - PG(k).ord       ARMA (p,q) order to start the interpolation
+% - PG(k).cp/cq     first order candidate in the rescan loop
+% - PG(k).seg1/seg2 final (trimmed) data segments as passed to armaint
+%                  (or to polintre for the small gaps)
+% - PG(k).writes    flag update [r1 r2 value] for skipped/kept gaps
+%
+% The fill/write values must be applied afterwards in increasing k order to
+% reproduce the behaviour of the sequential loop.
+
+function PG = prepare_gaps(datout, flagin, gs, ge, ns, ng, L, facmin, ...
+    facmax, fc, npi, pmin, npint, onesd, lastr_aka, ord1, aka1)
+
+temp = struct('stype',0,'g1',[],'g2',[],'np',[],'ord',[],'cp',[], ...
+    'cq',[],'seg1',[],'seg2',[],'writes',[]);
+PG = repmat(temp, ng, 1);
+
+for k = 1:ng
+
     g1 = gs(k);
     g2 = ge(k);
+    PG(k).g1 = g1;
+    PG(k).g2 = g2;
+
+    % Number of gaps remaining (including the current one)
+    rem = ng - k + 1;
+
     if k<ng
         nn = ns(k);
     else
@@ -207,10 +378,6 @@ parfor (k = 1:ng, nw)
 
     % Local copies of the (re)initialized model
     ord = ord1;
-    aka = aka1;
-    Dinfos{k} = cell(0,2);
-
-    % Local temporaries used in the (optional) order rescan
     cp = [];
     cq = [];
 
@@ -265,7 +432,7 @@ parfor (k = 1:ng, nw)
                     seg1 = nan;
                 else
                     if ~isempty(subi1)
-                        Fwrites{k} = [subi1(1), subi1(end), -1];
+                        PG(k).writes = [subi1(1), subi1(end), -1];
                     end
                     continue;
                 end
@@ -295,7 +462,7 @@ parfor (k = 1:ng, nw)
                         seg2 = nan;
                     else
                         if ~isempty(subi2)
-                            Fwrites{k} = [subi2(1), subi2(end), -1];
+                            PG(k).writes = [subi2(1), subi2(end), -1];
                         end
                         continue;
                     end
@@ -322,6 +489,7 @@ parfor (k = 1:ng, nw)
 
     % number of lost datapoints in the gap
     np = g2 - g1 + 1;
+    PG(k).np = np;
 
  %% Perform several checks over the data
 
@@ -377,10 +545,14 @@ parfor (k = 1:ng, nw)
                             seg2 = seg2(1:npint);
                         end
 
-                        interp = polintre (seg1, seg2, np, 3);
-
-                        Dfills{k} = interp;
-                        Fwrites{k} = [g1, g2, 0];
+                        % The polynomial interpolation is deferred to the
+                        % parallel loop below so that its (stochastic) rng
+                        % consumption happens in the same interleaved order
+                        % as the ARMA ones, keeping the serial results
+                        % identical to the previous version.
+                        PG(k).stype = 2;
+                        PG(k).seg1 = seg1;
+                        PG(k).seg2 = seg2;
 
                         continue;
                     end
@@ -411,10 +583,11 @@ parfor (k = 1:ng, nw)
                 seg2 = seg2(1:npint);
             end
 
-            interp = polintre (seg1, seg2, np, 3);
-
-            Dfills{k} = interp;
-            Fwrites{k} = [g1, g2, 0];
+            % Deferred to the parallel loop (see the note above about the
+            % order of the stochastic rng consumption).
+            PG(k).stype = 2;
+            PG(k).seg1 = seg1;
+            PG(k).seg2 = seg2;
 
             continue;
         end
@@ -434,11 +607,11 @@ parfor (k = 1:ng, nw)
     if (fac <= facmin)
 
         if lastr_aka
-            [akar, akac] = find(aka);
+            [akar, akac] = find(aka1);
 
             % Condition for the orders to be able to interpolate
             akaind = (akar+akac) < floor(len/facmin);
-            akared = aka( akaind );
+            akared = aka1( akaind );
 
             if isempty(akared)
                 % try the simplest ARMA model when there are two remaining
@@ -451,12 +624,12 @@ parfor (k = 1:ng, nw)
                     d = sum(ord);
                     fac = len / d;
                 else
-                    Fwrites{k} = [g1, g2, 1];
+                    PG(k).writes = [g1, g2, 1];
                     continue;
                 end
             else
                 minaka = min(akared);
-                [cp, cq] = find(aka == minaka);
+                [cp, cq] = find(aka1 == minaka);
                 q = cq - 1;
                 p = cp + pmin - 1;
                 ord = [p q];
@@ -491,97 +664,13 @@ parfor (k = 1:ng, nw)
         end
     end
 
- %%  Interpolation
+    % Final inputs of the ARMA interpolation for this gap
+    PG(k).stype = 1;
+    PG(k).seg1 = seg1;
+    PG(k).seg2 = seg2;
+    PG(k).ord = ord;
+    PG(k).cp = cp;
+    PG(k).cq = cq;
 
-    % Interpolation algorithm. go indicates whether it was possible or not
-    % Set the debug flag for testing purposes
-    if strin.flags.debug_flag
-        [interp, go, info] = armaint(seg1, seg2, ord, np, 'mem', mem, ...
-            'debug');
-        Dinfos{k} = [ Dinfos{k}; {info, true} ];
-    else
-        [interp, go] = armaint(seg1, seg2, ord, np, 'mem', mem);
-    end
-
-    % Finally the interpolated segment is inserted in datout
-    if go
-        Dfills{k} = interp;
-        Fwrites{k} = [g1, g2, 0];
-    else
-        % If armaint could not interpolate we try with next "optimal" order
-        % If, in any case, this results insufficient we could try in the
-        % future two solutions: a loop to find the order that makes it
-        % works, to restrict the orders in the MA part, since this appears
-        % to be more unstable when the q is high.
-        if lastr_aka
-            while ~go
-                aka(cp, cq) = nan;
-                minaka = min( min(aka) );
-                if isnan( minaka )
-                    Ftc_gap(k) = true;
-                    break
-                end
-                [cp, cq] = find(aka == minaka);
-                q = cq - 1;
-                p = cp + pmin - 1;
-                ord = [p q];
-                if strin.flags.debug_flag
-                    [interp, go, info] = armaint(seg1, seg2, ord, np, ...
-                        'mem', mem, 'debug');
-                    if go
-                        Dinfos{k} = [ Dinfos{k}; {info, false} ];
-                        Dfills{k} = interp;
-                        Fwrites{k} = [g1, g2, 0];
-                        break
-                    end
-                else
-                    [interp, go] = armaint(seg1, seg2, ord, np, ...
-                        'mem', mem);
-                    if go
-                        Dfills{k} = interp;
-                        Fwrites{k} = [g1, g2, 0];
-                        break
-                    end
-                end
-            end
-        else
-            Ftc_gap(k) = true;
-        end
-    end
 end
-
- %% Update datout and flagout with the results of every gap. The flag
- %  updatings are applied in the same order as in the sequential version so
- %  that overwritings produce the same final state.
-for k = 1:ng
-    if ~isempty(Dfills{k})
-        datout( gs(k):ge(k) ) = Dfills{k};
-    end
-    if ~isempty(Fwrites{k})
-        flagout( Fwrites{k}(1):Fwrites{k}(2) ) = Fwrites{k}(3);
-    end
-end
-
-% Write the debug information sequentially to avoid concurrent writes from
-% the parallel workers (info2table appends rows to csv files)
-if strin.flags.debug_flag
-    gnit = 1;
-    for k = 1:ng
-        for j = 1:size(Dinfos{k},1)
-            if Dinfos{k}{j,2}
-                info2table(Dinfos{k}{j,1}, gnit, iter);
-            else
-                info2table(Dinfos{k}{j,1}, gnit);
-            end
-            gnit = gnit + 1;
-        end
-    end
-end
-
-% FT correction required in at least one of the gaps
-ftc = any( Ftc_gap );
- 
-% fprintf(repmat('\b',1,5));
-fprintf('\n');
-
 end
