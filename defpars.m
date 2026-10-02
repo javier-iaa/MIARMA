@@ -7,13 +7,24 @@ function inStruct = defpars(subStruct)
 %
 % Output:      inStruct - parameters structure
 %
-% Version: 0.1
+% Version: 0.2
 %
+% Changes: - Added nwval for the number of cores in parallelization
+% 
 % Author(s): Javier Pascual-Granado
-% Date: 24/08/2026
+% Date: 03/10/2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+maxnumcores = 4;
+
 if strcmp(subStruct,'params')
+
+    % Number of workers for the parfor loop. Passed as 'nwval', a nonnegative
+    % integer (0 = serial on the client, N = pool with N workers). If the
+    % existing pool has fewer workers than requested, its size is used.
+    % Max number of cores used when nwval is default. If the real number of cores 
+    % is lower than this, then the max number of cores available will be used.
+    inStruct.nwval = min(feature('numcores'), maxnumcores);
 
     % This is the physical memory available. In case, it is different change
     % this number. Matlab R2024 is not prepared to determine this in Mac so I
