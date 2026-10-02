@@ -1,15 +1,20 @@
 29-sep-26   * MIARMA 0.1.2.12 R2024
 	    - BUGFIX: outStruct did not update well during the 4th run of interpolations
 	    - FEATURE: facint can be a float now.
+	    - FEATURE: added parameter nwval for the number of workers to use in parallel computations.
 
 	    * af_simp 0.5.1
 	    - Memory optimization: the whole strin structure was being broadcast to every parfor worker just to read strin.flags.debug_flag. The needed fields are now unpacked into scalar variables (<dbg>) before the loop so the series is no longer duplicated inside the structure on every worker.
 	    - Memory optimization: all the data/flag dependent pre-ARMA work (gap guard, segment selection, NaN trimming, same-length and facmax reductions, polynomial interpolation of small gaps, order reduction) is now performed serially on the client by the <prepare_gaps> helper and only the (small) final segments are sent to the parfor workers. The workers no longer receive copies of the full <datout>/<flagin> vectors, which drastically reduces the per-worker memory footprint for long series.
 	    - The debug information is collected inside the parallel loop and written to the tables (info2table) once the loop has ended.
 	    - Added a guard that skips any <igap> entry whose range is not a real gap (flagin(g1:g2)==1). This prevents an already filled segment from being overwritten and re-flagged as a gap when af_simp is called again with a stale <igap> after the filling has converged.
+	    - Input parameter <nwval> contained in <strin> control the number of workers used in the parfor loop.
 
-	     * armaint 1.4.8
-	     - Fixed the debug mode, that returned an unassigned <info> output when the gap was extrapolated with only one segment (forward or backward) or when the ARMA model failed, making info2table crash.
+	    * defpars 0.2
+	    - Added nwval for the number of cores in parallelization
+
+	    * armaint 1.4.8
+	    - Fixed the debug mode, that returned an unassigned <info> output when the gap was extrapolated with only one segment (forward or backward) or when the ARMA model failed, making info2table crash.
 
 26-sep-26   * MIARMA 0.1.2.11 R2024
 	    - BUGFIX: Recover data segments that were taken out with sing after ARMA run 2
