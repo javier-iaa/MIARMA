@@ -20,14 +20,16 @@ function [interp, go, info] = armaint(seg1, seg2, ord, N2, varargin)
 %               info - optional output structure containing information of
 %               the performance of armax algorithms.
 %
-% Version: 1.4.7 - R2024
+% Version: 1.4.8 - R2024
 %
 % Changes from the last version:
-% - Reverted armax_par to armax.
+% - Fixed the debug mode, that returned an unassigned <info> output when the
+%   gap was extrapolated with only one segment (forward or backward) or when
+%   the ARMA model failed, making info2table crash.
 %
 %  Calls: sigma_clip.m, algoprop.m
 %  Author(s): Javier Pascual-Granado
-%  Date: 30/08/2026
+%  Date: 30/09/2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % This flag load the customised algorithm options included in algoprop,
@@ -58,6 +60,29 @@ end
 go = true;
 interp = NaN;
 msg = [];
+
+% Default debug info, so that all the early-returning branches below
+% (one-sided extrapolation, sigma overflow, arma model failures) return a
+% well-formed structure that info2table can handle.
+if debug
+    info = struct( ...
+        'numel',          nan, ...
+        'std',            nan, ...
+        'ordp',           ord(1), ...
+        'ordq',           ord(2), ...
+        'armax_par_loss', nan, ...
+        'armax_par_time', nan, ...
+        'armax_par_ok',   false, ...
+        'armax_par_error','', ...
+        'armax_loss',     nan, ...
+        'armax_time',     nan, ...
+        'armax_ok',       false, ...
+        'armax_error',    '', ...
+        'armax_alg_loss', nan, ...
+        'armax_alg_time', nan, ...
+        'armax_alg_ok',   false, ...
+        'armax_alg_error','');
+end
 
 % Coefficient used to detect if the extrapolation explodes
 fac_sig = 5;
@@ -115,6 +140,12 @@ if ~isempty(find(isnan(seg2),1))
     
     % Normalization
     seg1n = (seg1-mean(seg1))./sig_s1;
+
+    % Debug info for the one-sided (forward only) extrapolation
+    if debug
+        info.numel = numel(seg1);
+        info.std   = sig_s1;
+    end
 
     % Calculate ARMA model and obtain the coeff. for the left segment
     try
@@ -186,6 +217,12 @@ if ~isempty(find(isnan(seg1),1))
     
     % Normalization
     seg2n = (seg2-mean(seg2))./sig_s2;
+
+    % Debug info for the one-sided (backward only) extrapolation
+    if debug
+        info.numel = numel(seg2);
+        info.std   = sig_s2;
+    end
 
     % Calculate ARMA model and obtain the coeff. for the right segment
     try
