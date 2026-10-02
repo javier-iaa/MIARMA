@@ -15,9 +15,6 @@ function [datout, flagout, ftc] = af_simp(strin, iter, varargin)
 %           - '1s' allows one-sided extrapolation when available 
 %              data does not allow forward-backward interpolation,
 %              otherwise (default), two-sided interpolation is used.
-%           - 'nw' followed by the number of workers for the parallel loop.
-%              Default: min(numcores,4) to keep the memory usage low, since
-%              every worker is a full MATLAB process (0 = serial execution).
 %
 % Output:   - datout - ARMA interpolated data series
 %           - flagout - residual status array
@@ -29,7 +26,7 @@ function [datout, flagout, ftc] = af_simp(strin, iter, varargin)
 % Calls:   armaint.m
 %          info2table.m
 %
-% Version: 0.5.1
+% Version: 0.5.1*
 %
 % Changes from the last version: 
 % - Memory optimization: the whole <strin> structure was being broadcast to
@@ -56,10 +53,12 @@ function [datout, flagout, ftc] = af_simp(strin, iter, varargin)
 % gap (flagin(g1:g2)==1). This prevents an already filled segment from
 % being overwritten and re-flagged as a gap when af_simp is called again
 % with a stale <igap> after the filling has converged.
+% - Input parameter <nwval> contained in <strin> control the number of
+% workers used in the parfor loop.
 % 
 % Author: Javier Pascual-Granado
 %
-% Date: 26/09/2026
+% Date: 03/10/2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Unpack the structure
@@ -71,6 +70,7 @@ npi= strin.params.npi;
 pmin = strin.params.pmin;
 fc = strin.params.facint;
 mem = strin.params.mem;
+nwval = strin.params.nwval;
 aka = strin.aka;
 dbg = strin.flags.debug_flag;
 
@@ -94,22 +94,6 @@ if isempty( onesd )
     onesd = false;
 else
     onesd = true;
-end
-
-% Number of workers for the parfor loop. Passed as 'nw', a nonnegative
-% integer (0 = serial on the client, N = pool with N workers). If the
-% existing pool has fewer workers than requested, its size is used.
-% Max number of cores used when nw is default. If the real number of cores 
-% is lower than this, then the max number of cores available will be used.
-maxnumcores = 24;
-
-nwreq = find( strcmp(varargin,'nw'), 1 );
-if ~isempty(nwreq)
-    nwval = varargin{nwreq+1};
-else
-    % Memory conscious default: never open more than maxnumcores workers
-    % (each one is a full MATLAB process with copies of the data).
-    nwval = min(feature('numcores'), maxnumcores);
 end
 
 % Data points used for the polynomial fitting.
