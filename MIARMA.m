@@ -67,13 +67,15 @@ function outStruct = MIARMA(inStruct)
 %                              saveout.m
 %                              defpars.m
 %
-% Version: 0.1.2.12
+% Version: 0.1.2.12*
 %
 % Changes:
 % - BUGFIX: outStruct not updated properly in run 4.
 % - FEATURE: facint can be a float.
+% - FEATURE: added parameter nwval for the number of workers to use in
+% parallel computations.
 %
-% Date: 29/09/2026
+% Date: 03/10/2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 numvers = '0.1.2.12';
@@ -122,7 +124,7 @@ if ischar( inStruct )
         parlist = {'mem', 'folder', 'ft_corr', 'facmin', 'facmax', 'npi', ...
             'npz', 'pmin', 'pmax', 'qmax', 'mseg', 'always_int', 'temp', ...
             'ascii_struct', 'akaname', 'facint', 'reco', 'cutoff', ...
-            'debug', 'verbose'};
+            'debug', 'verbose', 'nwval'};
         
         ini = fopen(inifile, "r");
         iniln = fgetln(ini);
@@ -224,6 +226,11 @@ if isfield( inStruct, 'params' )
     % Total system memory (to avoid overflow issues)
     if isfield( inStruct.params, 'mem')
         outStruct.params.mem = inStruct.params.mem;
+    end
+
+    % Number of workers in parallel computation (0=sequential)
+    if isfield( inStruct.params, 'nwval')
+        outStruct.params.nwval = inStruct.params.nwval;
     end
 
     %  Set the output folder
